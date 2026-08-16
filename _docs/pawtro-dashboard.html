@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ড্যাশবোর্ড — Pawtro</title>
+<script>
+(function(){
+  var t=null;
+  try{ t=localStorage.getItem('pawtro:theme'); }catch(e){}
+  if(!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F8F7; --surface:#FFFFFF; --surface-2:#F1F3F1;
+    --ink:#111614; --ink-2:#4F5A55; --ink-3:#8A948F;
+    --line:#E1E5E2; --line-2:#CDD4D0;
+    --lost:#9E3B36; --found:#1D6B5F; --adopt:#46577F; --brand:#1D6B5F;
+    --r:6px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Anek Bangla','Inter',system-ui,'Noto Sans Bengali',sans-serif;
+    font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0;font-weight:600;line-height:1.25;letter-spacing:-.01em}
+  .num{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums}
+  button{font-family:inherit;font-size:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+
+  /* dark mode */
+  [data-theme="dark"]{
+    --bg:#121614; --surface:#1A201D; --surface-2:#232A27;
+    --ink:#E7EDE9; --ink-2:#A3B0AA; --ink-3:#7B8983;
+    --line:#2C3531; --line-2:#3D4844;
+    --lost:#D97771; --found:#4FB59F; --adopt:#8296C4; --brand:#4FB59F;
+  }
+  [data-theme="dark"] .b-lost{color:#E29892;border-color:#4A2D2B;background:#241A19}
+  [data-theme="dark"] .b-found{color:#6ECBB4;border-color:#22453D;background:#15211E}
+  [data-theme="dark"] .b-adopt{color:#9CAEDA;border-color:#2C3550;background:#181C25}
+  [data-theme="dark"] .act.hi{background:#15211E;border-color:#22453D;color:#6ECBB4}
+  [data-theme="dark"] .act.warn{background:#241A19;border-color:#4A2D2B;color:#E29892}
+  [data-theme="dark"] .vbadge{color:#6ECBB4;background:#15211E;border-color:#22453D}
+  [data-theme="dark"] .btn.danger{color:#E29892;border-color:#4A2D2B}
+  [data-theme="dark"] .btn.danger:hover{background:#241A19}
+  [data-theme="dark"] .sw::after{background:#E7EDE9}
+  [data-theme="dark"] .segbar button[aria-pressed="true"]{box-shadow:0 1px 2px rgba(0,0,0,.4)}
+  [data-theme="dark"] .avatar .av{color:#0D1211}
+
+  .themebtn{border:1px solid var(--line-2);background:var(--surface);width:32px;height:32px;
+    border-radius:var(--r);display:grid;place-items:center;color:var(--ink-2);flex:0 0 32px;margin-left:auto}
+  .themebtn:hover{background:var(--surface-2)}
+  .themebtn + .avatar{margin-left:9px}
+  .themebtn .moon{display:none}
+  [data-theme="dark"] .themebtn .sun{display:none}
+  [data-theme="dark"] .themebtn .moon{display:block}
+
+  /* header */
+  header{position:sticky;top:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--line)}
+  .bar{max-width:1240px;margin:0 auto;padding:0 20px;height:56px;display:flex;align-items:center;gap:20px}
+  .logo{display:flex;align-items:center;gap:9px;padding-right:20px;border-right:1px solid var(--line);height:100%}
+  .logo .mark{width:26px;height:26px;border-radius:5px;background:var(--ink);color:#fff;
+    display:grid;place-items:center;font-size:15px;font-weight:700}
+  .logo b{font-size:16px;font-weight:700;letter-spacing:-.02em}
+  nav{display:flex;gap:2px}
+  .navlink{border:0;background:transparent;padding:6px 12px;border-radius:var(--r);
+    color:var(--ink-2);font-weight:500;font-size:14px}
+  .navlink:hover{background:var(--surface-2)}
+  .navlink[aria-current="true"]{background:var(--surface-2);color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--ink)}
+  .btn{border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;
+    border-radius:var(--r);font-weight:600;font-size:13.5px;white-space:nowrap}
+  .btn:hover{background:#000}
+  .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line-2)}
+  .btn.ghost:hover{background:var(--surface-2)}
+  .btn.sm{padding:5px 11px;font-size:13px}
+  .btn.block{width:100%;display:block}
+  .btn.danger{color:var(--lost);border-color:#E3C9C7;background:var(--surface)}
+  .btn.danger:hover{background:#FBF4F3}
+  .avatar{margin-left:auto;display:flex;align-items:center;gap:9px;cursor:pointer;
+    padding:4px 10px 4px 4px;border-radius:99px;border:1px solid var(--line)}
+  .avatar:hover{background:var(--surface-2)}
+  .avatar .av{width:26px;height:26px;border-radius:99px;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-size:12px;font-weight:600}
+  .avatar span{font-size:13.5px;font-weight:500}
+
+  /* layout */
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .head h1{font-size:24px;letter-spacing:-.02em}
+  .head p{margin:3px 0 0;font-size:13.5px;color:var(--ink-2)}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+  .stat .k{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:600}
+  .stat .v{font-family:'Inter',sans-serif;font-size:27px;font-weight:600;letter-spacing:-.03em;margin-top:5px;line-height:1}
+  .stat .s{font-size:12px;color:var(--ink-2);margin-top:3px}
+  .stat.hot .v{color:var(--found)}
+
+  /* section */
+  .sect{margin-bottom:26px}
+  .secthead{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding-bottom:9px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .secthead h2{font-size:16px}
+  .secthead .c{font-family:'Inter',sans-serif;font-size:12px;color:var(--ink-3)}
+  .segbar{display:flex;gap:2px;background:var(--surface-2);padding:3px;border-radius:var(--r);border:1px solid var(--line)}
+  .segbar button{border:0;background:transparent;padding:4px 11px;border-radius:4px;
+    font-size:13px;color:var(--ink-2);font-weight:500}
+  .segbar button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;
+    box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+  /* post row */
+  .prow{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:13px;display:flex;gap:13px;margin-bottom:8px;align-items:flex-start}
+  .prow:hover{border-color:var(--line-2)}
+  .prow.resolved{opacity:.6}
+  .thumb{width:76px;height:76px;flex:0 0 76px;border-radius:5px;border:1px solid var(--line);
+    display:grid;place-items:center;overflow:hidden}
+  .thumb svg{width:38px;height:38px;opacity:.42;color:#3B4642}
+  .pbody{flex:1;min-width:0}
+  .r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+  .badge{font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;padding:2px 6px;
+    border-radius:3px;border:1px solid;background:var(--surface)}
+  .b-lost{color:var(--lost);border-color:#E3C9C7;background:#FBF4F3}
+  .b-found{color:var(--found);border-color:#C2DAD5;background:#F1F8F6}
+  .b-adopt{color:var(--adopt);border-color:#C9D1E3;background:#F3F5FA}
+  .b-done{color:var(--ink-3);border-color:var(--line);background:var(--surface-2)}
+  .prow h3{font-size:15px}
+  .meta{font-family:'Inter',sans-serif;font-size:12px;color:var(--ink-3);display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+  .meta i{font-style:normal;color:var(--line-2)}
+  /* activity pills */
+  .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .act{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 8px;
+    border-radius:99px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2)}
+  .act b{font-family:'Inter',sans-serif;font-weight:600}
+  .act.hi{background:#F1F8F6;border-color:#C2DAD5;color:var(--found)}
+  .act.warn{background:#FBF4F3;border-color:#E3C9C7;color:var(--lost)}
+  .pacts{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+  @media (max-width:760px){.pacts{flex-direction:row;flex-wrap:wrap;width:100%;margin-top:10px}}
+
+  /* application card */
+  .app{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:8px}
+  .apph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .apph b{font-size:14px}
+  .apph .for{font-family:'Inter',sans-serif;font-size:11.5px;color:var(--ink-3)}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+  .tag{font-size:12px;background:var(--surface-2);border:1px solid var(--line);padding:1px 8px;border-radius:3px;color:var(--ink-2)}
+  .app p{margin:8px 0 0;font-size:13px;color:var(--ink-2)}
+  .appacts{display:flex;gap:7px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+
+  /* profile */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  .card h3{font-size:15px;margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-family:'Inter',sans-serif;font-size:11.5px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:5px}
+  input[type=text],input[type=tel],select{font-family:inherit;font-size:14px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);width:100%}
+  input:focus,select:focus{border-color:var(--ink);outline:none}
+  .toggle{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .toggle:last-of-type{border-bottom:0}
+  .toggle .tx{flex:1}
+  .toggle b{display:block;font-size:13.5px;font-weight:600}
+  .toggle span{font-size:12.5px;color:var(--ink-2)}
+  .sw{position:relative;width:38px;height:22px;flex:0 0 38px;border-radius:99px;
+    background:var(--line-2);border:0;transition:.15s;margin-top:2px}
+  .sw::after{content:'';position:absolute;top:2px;right:2px;width:18px;height:18px;
+    border-radius:99px;background:#fff;transition:.15s}
+  .sw[aria-pressed="true"]{background:var(--brand)}
+  .sw[aria-pressed="true"]::after{right:18px}
+  .verirow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);margin-top:4px}
+  .vbadge{display:inline-flex;align-items:center;gap:4px;font-family:'Inter',sans-serif;font-size:10.5px;
+    font-weight:600;color:var(--found);background:#F1F8F6;border:1px solid #C2DAD5;padding:1px 7px;border-radius:99px}
+
+  .empty{background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r);
+    padding:34px 22px;text-align:center}
+  .empty h3{font-size:15px;margin-bottom:4px}
+  .empty p{margin:0 0 14px;color:var(--ink-2);font-size:13.5px}
+
+  .page{display:none}.page.on{display:block}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);z-index:99;
+    background:var(--ink);color:#fff;padding:10px 18px;border-radius:var(--r);font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.2s}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* setup screen */
+  .setup{max-width:420px;margin:56px auto;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;padding:26px}
+  .setup h2{font-size:20px;letter-spacing:-.02em}
+  .setup p.lead{margin:6px 0 20px;font-size:13.5px;color:var(--ink-2)}
+  .note{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);
+    padding:10px 12px;border-radius:var(--r);margin-top:14px}
+
+  @media (max-width:820px){
+    .stats{grid-template-columns:1fr 1fr}
+    .grid2{grid-template-columns:1fr}
+    .prow{flex-wrap:wrap}
+    .bar{height:auto;padding:10px 14px;flex-wrap:wrap;gap:10px}
+    .logo{border-right:0;padding-right:0}
+    nav{order:3;width:100%;overflow-x:auto}
+    .avatar{margin-left:auto}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="logo">
+      <div class="mark"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="7" cy="8.5" rx="2.3" ry="3.1" transform="rotate(-18 7 8.5)"/><ellipse cx="12" cy="6.4" rx="2.3" ry="3.3"/><ellipse cx="17" cy="8.5" rx="2.3" ry="3.1" transform="rotate(18 17 8.5)"/><path d="M12 12.2c3.1 0 5.6 2.3 5.6 5 0 2-1.5 3.2-3.4 3.2-1 0-1.6-.4-2.2-.4s-1.2.4-2.2.4c-1.9 0-3.4-1.2-3.4-3.2 0-2.7 2.5-5 5.6-5z"/></svg></div>
+      <b>Pawtro</b></div>
+    <nav id="nav">
+      <button class="navlink" data-p="overview" aria-current="true">ওভারভিউ</button>
+      <button class="navlink" data-p="posts" aria-current="false">আমার পোস্ট</button>
+      <button class="navlink" data-p="apps" aria-current="false">দত্তক আবেদন</button>
+      <button class="navlink" data-p="profile" aria-current="false">প্রোফাইল</button>
+    </nav>
+    <button class="themebtn" id="themeBtn" aria-label="থিম বদলান" title="থিম বদলান">
+      <svg class="sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <div class="avatar" onclick="go('profile')">
+      <div class="av" id="avInit">—</div><span id="avName">প্রোফাইল</span>
+    </div>
+  </div>
+</header>
+
+<!-- profile setup -->
+<div id="setup" class="setup" hidden>
+  <h2>প্রোফাইল তৈরি করুন</h2>
+  <p class="lead">নাম ও ফোন নম্বর দিলেই ড্যাশবোর্ড চালু হবে। ফোন নম্বর কখনো পাবলিকভাবে দেখানো হয় না — শুধু মেসেজের মাধ্যমে যোগাযোগ হয়।</p>
+  <div class="field"><label>আপনার নাম</label><input type="text" id="suName" placeholder="যেমন: রাফিদ হাসান"></div>
+  <div class="field"><label>ফোন নম্বর</label><input type="tel" id="suPhone" placeholder="০১XXXXXXXXX"></div>
+  <div class="field"><label>এলাকা</label>
+    <select id="suDiv"></select></div>
+  <button class="btn block" onclick="createProfile()">শুরু করুন</button>
+  <div class="note">এটি প্রোটোটাইপ — আসল সাইটে এই ধাপে Clerk দিয়ে ইমেইল/Google লগইন হবে, বাকি ড্যাশবোর্ড হুবহু একই থাকবে।</div>
+</div>
+
+<div class="wrap" id="app" hidden>
+
+  <!-- OVERVIEW -->
+  <div class="page on" id="pgOverview">
+    <div class="head">
+      <div><h1 id="greet">স্বাগতম</h1>
+        <p id="greetSub"></p></div>
+      <button class="btn" onclick="toast('মূল সাইটে নতুন পোস্টের ফর্ম খুলবে')">নতুন পোস্ট করুন</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="sect">
+      <div class="secthead"><h2>মনোযোগ প্রয়োজন</h2><span class="c" id="attnC"></span></div>
+      <div id="attn"></div>
+    </div>
+    <div class="sect">
+      <div class="secthead"><h2>সাম্প্রতিক কার্যক্রম</h2></div>
+      <div id="feedAct"></div>
+    </div>
+  </div>
+
+  <!-- POSTS -->
+  <div class="page" id="pgPosts">
+    <div class="head">
+      <div><h1>আমার পোস্ট</h1><p id="postsSub"></p></div>
+      <div class="segbar" id="filt">
+        <button data-f="all" aria-pressed="true">সব</button>
+        <button data-f="open" aria-pressed="false">সক্রিয়</button>
+        <button data-f="resolved" aria-pressed="false">সমাধান হয়েছে</button>
+      </div>
+    </div>
+    <div id="postList"></div>
+  </div>
+
+  <!-- APPLICATIONS -->
+  <div class="page" id="pgApps">
+    <div class="head">
+      <div><h1>দত্তক আবেদন</h1><p>আপনার দত্তক পোস্টে যারা আগ্রহ দেখিয়েছেন।</p></div>
+    </div>
+    <div id="appList"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="pgProfile">
+    <div class="head"><div><h1>প্রোফাইল ও সেটিংস</h1><p>আপনার তথ্য ও নোটিফিকেশন পছন্দ।</p></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h3>ব্যক্তিগত তথ্য</h3>
+        <div class="field"><label>নাম</label><input type="text" id="pName"></div>
+        <div class="field"><label>ফোন নম্বর</label><input type="tel" id="pPhone">
+          <div class="verirow" id="veriRow"></div></div>
+        <div class="field"><label>এলাকা</label><select id="pDiv"></select></div>
+        <button class="btn" onclick="saveProfile()">সংরক্ষণ করুন</button>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3>নোটিফিকেশন</h3>
+          <div class="toggle"><div class="tx"><b>সম্ভাব্য মিল পাওয়া গেলে</b>
+            <span>আপনার হারানো পোস্টের সাথে নতুন কিছু মিললে সাথে সাথে ইমেইল</span></div>
+            <button class="sw" data-n="match" aria-pressed="true"></button></div>
+          <div class="toggle"><div class="tx"><b>কেউ "দেখেছি" জানালে</b>
+            <span>সাইটিং রিপোর্ট এলে সাথে সাথে ইমেইল</span></div>
+            <button class="sw" data-n="sight" aria-pressed="true"></button></div>
+          <div class="toggle"><div class="tx"><b>এলাকায় নতুন পোস্ট</b>
+            <span>দিনে একবার সারসংক্ষেপ</span></div>
+            <button class="sw" data-n="digest" aria-pressed="false"></button></div>
+          <div class="toggle"><div class="tx"><b>পুরোনো পোস্টের রিমাইন্ডার</b>
+            <span>৭ দিন পর "এখনো খুঁজছেন?" মনে করিয়ে দেওয়া</span></div>
+            <button class="sw" data-n="remind" aria-pressed="true"></button></div>
+        </div>
+        <div class="card">
+          <h3>অ্যাকাউন্ট</h3>
+          <p style="margin:0 0 12px;font-size:13.5px;color:var(--ink-2)">
+            অ্যাকাউন্ট মুছে ফেললে আপনার সব পোস্ট, ছবি ও মন্তব্য স্থায়ীভাবে চলে যাবে। এটি ফেরানো যাবে না।</p>
+          <button class="btn danger" onclick="wipe()">অ্যাকাউন্ট ও সব ডেটা মুছুন</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Pawtro — ইউজার ড্যাশবোর্ড (প্রোটোটাইপ)
+   লগইন নেই: প্রোফাইল লোকালি তৈরি হয়। আসল সাইটে এই জায়গায়
+   Clerk সেশন বসবে, বাকি UI ও লজিক অপরিবর্তিত থাকবে।
+   ============================================================ */
+
+const DIVISIONS=['ঢাকা','চট্টগ্রাম','রাজশাহী','খুলনা','বরিশাল','সিলেট','রংপুর','ময়মনসিংহ'];
+const SPECIES={dog:'কুকুর',cat:'বিড়াল',bird:'পাখি',other:'অন্যান্য'};
+const TYPE={lost:{bn:'হারিয়েছে',c:'lost'},found:{bn:'পাওয়া গেছে',c:'found'},adopt:{bn:'দত্তক',c:'adopt'}};
+const TINT={dog:'#F2EDE6',cat:'#EAEEF2',bird:'#E9F0E9',other:'#F0EBEF'};
+const ICON={
+ dog:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 14c0-4 1-6 2-6s4 3 6 4"/><path d="M36 14c0-4-1-6-2-6s-4 3-6 4"/><path d="M12 14c0 3-1 5-1 9 0 8 6 13 13 13s13-5 13-13c0-4-1-6-1-9"/><circle cx="19" cy="24" r="1.6" fill="currentColor" stroke="none"/><circle cx="29" cy="24" r="1.6" fill="currentColor" stroke="none"/><ellipse cx="24" cy="29" rx="2.6" ry="1.8" fill="currentColor" stroke="none"/><path d="M21 33c1 1.2 5 1.2 6 0"/></svg>',
+ cat:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M13 20 11 9l8 5"/><path d="M35 20 37 9l-8 5"/><path d="M13 20c-1 3-1 5-1 7 0 7 5 11 12 11s12-4 12-11c0-2 0-4-1-7"/><circle cx="19" cy="25" r="1.6" fill="currentColor" stroke="none"/><circle cx="29" cy="25" r="1.6" fill="currentColor" stroke="none"/><path d="M24 29.5v1.5M21 32c1 1 5 1 6 0"/><path d="M8 27h7M8 31h7M40 27h-7M40 31h-7"/></svg>',
+ bird:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M30 12a6 6 0 1 0-8.5 5.5C17 20 14 25 14 30c0 5 4 8 9 8s11-5 11-13c0-4-1-7-2-9"/><path d="M30 12l6 3-6 3"/><circle cx="28" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M20 25c4 2 8 3 12 2"/><path d="M20 38l-2 4M27 38l2 4"/></svg>',
+ other:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="18" cy="14" rx="3.2" ry="8" transform="rotate(-12 18 14)"/><ellipse cx="29" cy="14" rx="3.2" ry="8" transform="rotate(12 29 14)"/><path d="M15 24c-1 2-2 4-2 7 0 5 5 8 11 8s11-3 11-8c0-3-1-5-2-7"/><circle cx="19" cy="29" r="1.5" fill="currentColor" stroke="none"/><circle cx="29" cy="29" r="1.5" fill="currentColor" stroke="none"/><path d="M24 32v2M21 35c1 1 5 1 6 0"/></svg>'};
+
+const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2400);};
+
+/* ---------- storage ---------- */
+const Store={
+  async get(k){try{if(window.storage){const r=await window.storage.get('pawtro-dash:'+k);return r?JSON.parse(r.value):null;}}catch(e){}
+    try{const v=localStorage.getItem('pawtro-dash:'+k);return v?JSON.parse(v):null;}catch(e){return null;}},
+  async set(k,v){const raw=JSON.stringify(v);
+    try{if(window.storage){await window.storage.set('pawtro-dash:'+k,raw);return;}}catch(e){}
+    try{localStorage.setItem('pawtro-dash:'+k,raw);}catch(e){}}
+};
+
+/* ---------- demo data ---------- */
+let profile=null;
+let POSTS=[
+ {id:1,type:'lost',species:'dog',name:'বাদশা',breed:'দেশি',area:'উপশহর, রাজশাহী',
+  date:'২৮ জুলাই',ago:'৫ দিন আগে',status:'open',matches:3,topScore:87,sightings:2,comments:4,views:214,posterMade:true},
+ {id:4,type:'lost',species:'cat',name:'মিমি',breed:'পার্সিয়ান মিক্স',area:'শালবাগান, রাজশাহী',
+  date:'৩১ জুলাই',ago:'২ দিন আগে',status:'open',matches:1,topScore:78,sightings:0,comments:1,views:96,posterMade:false},
+ {id:6,type:'adopt',species:'cat',name:'লাড্ডু',breed:'দেশি',area:'বিনোদপুর, রাজশাহী',
+  date:'২০ জুলাই',ago:'১৩ দিন আগে',status:'open',matches:0,applications:3,comments:2,views:340,posterMade:false},
+ {id:10,type:'adopt',species:'other',name:'তুলো',breed:'খরগোশ',area:'কোর্ট স্টেশন, রাজশাহী',
+  date:'১৮ জুলাই',ago:'১৫ দিন আগে',status:'open',matches:0,applications:1,comments:0,views:128,posterMade:false},
+ {id:3,type:'found',species:'dog',name:null,breed:'দেশি',area:'কাজলা, রাজশাহী',
+  date:'২৫ জুলাই',ago:'৮ দিন আগে',status:'resolved',matches:0,comments:6,views:187,posterMade:true}
+];
+let APPS=[
+ {id:1,petId:6,petName:'লাড্ডু',name:'সাদিয়া আফরিন',phone:'০১৭XXXXXXXX',home:'ফ্ল্যাট',
+  exp:'আগে পোষ্য ছিল',msg:'পরিবারে চারজন, আমি বাসা থেকেই কাজ করি তাই সারাদিন সঙ্গ দিতে পারব। আগে একটি বিড়াল ছিল, ১১ বছর আমাদের সাথে ছিল।',at:'২ দিন আগে',state:'new'},
+ {id:2,petId:6,petName:'লাড্ডু',name:'তানভীর রহমান',phone:'০১৯XXXXXXXX',home:'উঠান সহ বাসা',
+  exp:'এখনো পোষ্য আছে',msg:'বাসায় একটি বিড়াল আছে, সঙ্গী হলে ভালো হয়। উঠান আছে, ভেট কাছেই।',at:'৪ দিন আগে',state:'new'},
+ {id:3,petId:6,petName:'লাড্ডু',name:'নুসরাত জাহান',phone:'০১৬XXXXXXXX',home:'মেস / শেয়ার্ড',
+  exp:'প্রথমবার',msg:'অনেকদিন ধরে ভাবছি। মেসে থাকি, তবে বাড়িওয়ালার অনুমতি নিয়েছি।',at:'৬ দিন আগে',state:'contacted'},
+ {id:4,petId:10,petName:'তুলো',name:'রায়হান কবির',phone:'০১৮XXXXXXXX',home:'ফ্ল্যাট',
+  exp:'আগে পোষ্য ছিল',msg:'খরগোশ পালার অভিজ্ঞতা আছে, খাঁচা ও জায়গা প্রস্তুত।',at:'৩ দিন আগে',state:'new'}
+];
+const ACTIVITY=[
+ {icon:'match',text:'<b>বাদশা</b>-র জন্য নতুন সম্ভাব্য মিল — ৮৭% (সাহেব বাজার)',at:'২ ঘণ্টা আগে'},
+ {icon:'sight',text:'কেউ <b>বাদশা</b>-কে লক্ষ্মীপুরে দেখেছেন বলে জানিয়েছেন',at:'গতকাল'},
+ {icon:'app',text:'<b>লাড্ডু</b>-র জন্য নতুন দত্তক আবেদন — সাদিয়া আফরিন',at:'২ দিন আগে'},
+ {icon:'comment',text:'<b>বাদশা</b>-র পোস্টে নতুন মন্তব্য যোগ হয়েছে',at:'৩ দিন আগে'},
+ {icon:'match',text:'<b>মিমি</b>-র জন্য একটি সম্ভাব্য মিল — ৭৮% (পদ্মা আবাসিক)',at:'৩ দিন আগে'}
+];
+const ACTICON={
+ match:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>',
+ sight:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+ app:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+ comment:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>'};
+
+let prefs={match:true,sight:true,digest:false,remind:true};
+let postFilter='all';
+
+/* ---------- profile ---------- */
+function fillDivs(el,sel){el.innerHTML=DIVISIONS.map(d=>`<option${d===sel?' selected':''}>${d}</option>`).join('');}
+
+async function createProfile(){
+  const n=document.getElementById('suName').value.trim();
+  const p=document.getElementById('suPhone').value.trim();
+  if(!n){toast('নাম লিখুন');return;}
+  if(!p){toast('ফোন নম্বর লিখুন');return;}
+  profile={name:n,phone:p,division:document.getElementById('suDiv').value,verified:false,joined:'আজ'};
+  await Store.set('profile',profile); await Store.set('prefs',prefs);
+  showApp();
+}
+async function saveProfile(){
+  profile.name=document.getElementById('pName').value.trim()||profile.name;
+  profile.phone=document.getElementById('pPhone').value.trim()||profile.phone;
+  profile.division=document.getElementById('pDiv').value;
+  await Store.set('profile',profile); paintProfile(); toast('প্রোফাইল সংরক্ষিত হয়েছে');
+}
+async function wipe(){
+  if(!confirm('অ্যাকাউন্ট ও সব ডেটা স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরানো যাবে না।'))return;
+  await Store.set('profile',null); await Store.set('prefs',null);
+  location.reload();
+}
+function verifyPhone(){
+  profile.verified=true; Store.set('profile',profile); paintProfile();
+  toast('ফোন নম্বর যাচাই হয়েছে — আসল সাইটে এখানে OTP আসবে');
+}
+
+/* ---------- render ---------- */
+function initials(n){return n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('');}
+
+function paintProfile(){
+  document.getElementById('avInit').textContent=initials(profile.name);
+  document.getElementById('avName').textContent=profile.name.split(' ')[0];
+  document.getElementById('pName').value=profile.name;
+  document.getElementById('pPhone').value=profile.phone;
+  fillDivs(document.getElementById('pDiv'),profile.division);
+  document.getElementById('veriRow').innerHTML = profile.verified
+    ? `<span class="vbadge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>যাচাই করা</span>
+       <span style="font-size:12.5px;color:var(--ink-3)">যাচাই করা নম্বরের পোস্টে মানুষ বেশি ভরসা করে</span>`
+    : `<button class="btn ghost sm" onclick="verifyPhone()">নম্বর যাচাই করুন</button>
+       <span style="font-size:12.5px;color:var(--ink-3)">যাচাই করলে পোস্টে ভরসার ব্যাজ যুক্ত হয়</span>`;
+}
+
+function paintOverview(){
+  const open=POSTS.filter(p=>p.status==='open');
+  const matches=POSTS.reduce((s,p)=>s+(p.matches||0),0);
+  const apps=APPS.filter(a=>a.state==='new').length;
+  const views=POSTS.reduce((s,p)=>s+p.views,0);
+
+  document.getElementById('greet').textContent=`স্বাগতম, ${profile.name.split(' ')[0]}`;
+  document.getElementById('greetSub').textContent=
+    `${bn(open.length)}টি সক্রিয় পোস্ট · ${profile.division} · যোগ দিয়েছেন ${profile.joined}`;
+
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="k">সক্রিয় পোস্ট</div><div class="v num">${bn(open.length)}</div>
+      <div class="s">মোট ${bn(POSTS.length)}টির মধ্যে</div></div>
+    <div class="stat ${matches?'hot':''}"><div class="k">সম্ভাব্য মিল</div><div class="v num">${bn(matches)}</div>
+      <div class="s">${matches?'যাচাই করে দেখুন':'এখনো কিছু নেই'}</div></div>
+    <div class="stat ${apps?'hot':''}"><div class="k">নতুন আবেদন</div><div class="v num">${bn(apps)}</div>
+      <div class="s">দত্তক পোস্টে</div></div>
+    <div class="stat"><div class="k">মোট দেখা হয়েছে</div><div class="v num">${bn(views)}</div>
+      <div class="s">সব পোস্ট মিলিয়ে</div></div>`;
+
+  /* attention: posts with matches, sightings, apps, or missing poster */
+  const attn=[];
+  POSTS.filter(p=>p.status==='open').forEach(p=>{
+    if(p.matches) attn.push({p,why:`${bn(p.matches)}টি সম্ভাব্য মিল অপেক্ষা করছে — সর্বোচ্চ ${bn(p.topScore)}% `,cls:'hi',cta:'মিল দেখুন'});
+    else if(p.applications) attn.push({p,why:`${bn(p.applications)}টি দত্তক আবেদন পর্যালোচনার অপেক্ষায়`,cls:'hi',cta:'আবেদন দেখুন'});
+    else if(p.type!=='adopt'&&!p.posterMade) attn.push({p,why:'এখনো পোস্টার বানাননি — এলাকায় লাগালে খোঁজার সম্ভাবনা বাড়ে',cls:'warn',cta:'পোস্টার বানান'});
+  });
+  document.getElementById('attnC').textContent=attn.length?bn(attn.length)+' টি':'';
+  document.getElementById('attn').innerHTML = attn.length ? attn.map(a=>`
+    <div class="prow">
+      <div class="thumb" style="background:${TINT[a.p.species]}">${ICON[a.p.species]}</div>
+      <div class="pbody">
+        <div class="r1"><span class="badge b-${TYPE[a.p.type].c}">${TYPE[a.p.type].bn}</span>
+          <h3>${a.p.name?a.p.name+' · ':''}${a.p.breed} ${SPECIES[a.p.species]}</h3></div>
+        <div class="meta"><span>${a.p.area}</span><i>·</i><span>${a.p.ago}</span></div>
+        <div class="acts"><span class="act ${a.cls}">${a.why}</span></div>
+      </div>
+      <div class="pacts"><button class="btn sm" onclick="toast('${a.cta} — মূল সাইটে খুলবে')">${a.cta}</button></div>
+    </div>`).join('')
+  : `<div class="empty"><h3>সব ঠিক আছে</h3><p>এই মুহূর্তে আপনার কোনো পোস্টে জরুরি কিছু নেই।</p></div>`;
+
+  document.getElementById('feedAct').innerHTML=ACTIVITY.map(a=>`
+    <div class="prow" style="padding:11px 13px;align-items:center">
+      <div class="thumb" style="width:32px;height:32px;flex-basis:32px;background:var(--surface-2);color:var(--ink-2)">${ACTICON[a.icon]}</div>
+      <div class="pbody"><div style="font-size:13.5px">${a.text}</div>
+        <div class="meta"><span>${a.at}</span></div></div>
+    </div>`).join('');
+}
+
+function paintPosts(){
+  const list=POSTS.filter(p=>postFilter==='all'||p.status===postFilter);
+  document.getElementById('postsSub').textContent=
+    `${bn(POSTS.filter(p=>p.status==='open').length)}টি সক্রিয়, ${bn(POSTS.filter(p=>p.status==='resolved').length)}টি সমাধান হয়েছে`;
+  document.getElementById('postList').innerHTML = list.length ? list.map(p=>`
+    <div class="prow ${p.status==='resolved'?'resolved':''}">
+      <div class="thumb" style="background:${TINT[p.species]}">${ICON[p.species]}</div>
+      <div class="pbody">
+        <div class="r1">
+          <span class="badge ${p.status==='resolved'?'b-done':'b-'+TYPE[p.type].c}">${p.status==='resolved'?'বন্ধ':TYPE[p.type].bn}</span>
+          <h3>${p.name?p.name+' · ':''}${p.breed} ${SPECIES[p.species]}</h3></div>
+        <div class="meta"><span>${p.area}</span><i>·</i><span>${p.date}</span><i>·</i><span class="num">${bn(p.views)} বার দেখা হয়েছে</span></div>
+        <div class="acts">
+          ${p.matches?`<span class="act hi"><b class="num">${bn(p.matches)}</b> মিল · সর্বোচ্চ <b class="num">${bn(p.topScore)}%</b></span>`:''}
+          ${p.sightings?`<span class="act"><b class="num">${bn(p.sightings)}</b> সাইটিং</span>`:''}
+          ${p.applications?`<span class="act hi"><b class="num">${bn(p.applications)}</b> আবেদন</span>`:''}
+          ${p.comments?`<span class="act"><b class="num">${bn(p.comments)}</b> মন্তব্য</span>`:''}
+          ${p.type!=='adopt'&&!p.posterMade&&p.status==='open'?`<span class="act warn">পোস্টার বানাননি</span>`:''}
+        </div>
+      </div>
+      <div class="pacts">
+        <button class="btn ghost sm" onclick="toast('সম্পাদনার ফর্ম খুলবে')">সম্পাদনা</button>
+        ${p.status==='open'?`<button class="btn ghost sm" onclick="resolvePost(${p.id})">সমাধান হয়েছে</button>`:''}
+        <button class="btn ghost sm danger" onclick="delPost(${p.id})">মুছুন</button>
+      </div>
+    </div>`).join('')
+  : `<div class="empty"><h3>কোনো পোস্ট নেই</h3><p>এই ফিল্টারে কিছু পাওয়া যায়নি।</p></div>`;
+}
+
+function paintApps(){
+  const byPet={};
+  APPS.forEach(a=>{(byPet[a.petName]=byPet[a.petName]||[]).push(a);});
+  const keys=Object.keys(byPet);
+  document.getElementById('appList').innerHTML = keys.length ? keys.map(pet=>`
+    <div class="sect">
+      <div class="secthead"><h2>${pet}</h2><span class="c num">${bn(byPet[pet].length)} টি আবেদন</span></div>
+      ${byPet[pet].map(a=>`
+        <div class="app">
+          <div class="apph"><b>${a.name}</b>
+            <span class="for">${a.at}${a.state==='contacted'?' · যোগাযোগ করা হয়েছে':''}</span></div>
+          <div class="tags"><span class="tag">${a.home}</span><span class="tag">${a.exp}</span>
+            <span class="tag">${a.phone}</span></div>
+          <p>${a.msg}</p>
+          <div class="appacts">
+            <button class="btn sm" onclick="markApp(${a.id})">${a.state==='new'?'যোগাযোগ করেছি':'আবার যোগাযোগ'}</button>
+            <button class="btn ghost sm" onclick="toast('মেসেজ থ্রেড খুলবে')">মেসেজ পাঠান</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('')
+  : `<div class="empty"><h3>এখনো কোনো আবেদন আসেনি</h3>
+     <p>দত্তক পোস্টে কেউ আগ্রহ দেখালে এখানে দেখতে পাবেন।</p></div>`;
+}
+
+function resolvePost(id){
+  const p=POSTS.find(x=>x.id===id); p.status='resolved'; p.matches=0;
+  paintPosts(); paintOverview(); toast('পোস্ট বন্ধ করা হয়েছে — গল্প লিখতে চাইলে মূল সাইটে যান');
+}
+function delPost(id){
+  if(!confirm('পোস্টটি মুছে ফেলবেন?'))return;
+  POSTS=POSTS.filter(p=>p.id!==id); paintPosts(); paintOverview(); toast('পোস্ট মুছে ফেলা হয়েছে');
+}
+function markApp(id){
+  const a=APPS.find(x=>x.id===id); a.state='contacted';
+  paintApps(); paintOverview(); toast('আবেদন চিহ্নিত করা হয়েছে');
+}
+
+/* ---------- nav ---------- */
+function go(p){
+  ['overview','posts','apps','profile'].forEach(n=>
+    document.getElementById('pg'+n[0].toUpperCase()+n.slice(1)).classList.toggle('on',n===p));
+  document.querySelectorAll('#nav .navlink').forEach(b=>b.setAttribute('aria-current',String(b.dataset.p===p)));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const now = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', now);
+  try{ localStorage.setItem('pawtro:theme', now); }catch(e){}
+  toast(now==='dark' ? 'ডার্ক মোড চালু' : 'লাইট মোড চালু');
+});
+document.getElementById('nav').addEventListener('click',e=>{
+  const b=e.target.closest('.navlink'); if(b) go(b.dataset.p);});
+document.getElementById('filt').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  document.querySelectorAll('#filt button').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true'); postFilter=b.dataset.f; paintPosts();});
+document.querySelectorAll('.sw').forEach(sw=>sw.addEventListener('click',()=>{
+  const k=sw.dataset.n, on=sw.getAttribute('aria-pressed')!=='true';
+  sw.setAttribute('aria-pressed',String(on)); prefs[k]=on; Store.set('prefs',prefs);
+  toast(on?'চালু করা হয়েছে':'বন্ধ করা হয়েছে');}));
+
+/* ---------- boot ---------- */
+function showApp(){
+  document.getElementById('setup').hidden=true;
+  document.getElementById('app').hidden=false;
+  paintProfile(); paintOverview(); paintPosts(); paintApps();
+}
+(async function(){
+  fillDivs(document.getElementById('suDiv'),'রাজশাহী');
+  const savedPrefs=await Store.get('prefs'); if(savedPrefs) prefs=savedPrefs;
+  document.querySelectorAll('.sw').forEach(sw=>sw.setAttribute('aria-pressed',String(!!prefs[sw.dataset.n])));
+  const saved=await Store.get('profile');
+  if(saved&&saved.name){ profile=saved; showApp(); }
+  else document.getElementById('setup').hidden=false;
+})();
+</script>
+</body>
+</html>
