@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { uploadPetImage } from '@/lib/image-upload';
 import { getGeohash } from '@/lib/geo';
+import Navbar from '@/components/Navbar';
 import { 
   Upload, 
   MapPin, 
@@ -15,16 +17,30 @@ import {
   Phone, 
   Loader2, 
   AlertCircle, 
-  CheckCircle2 
+  CheckCircle2,
+  ArrowLeft,
+  X
 } from 'lucide-react';
 
 const DIVISIONS = ['ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
 
-export default function PostPetPage() {
+function PostPetForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile } = useAuth();
 
-  const [type, setType] = useState<'lost' | 'found' | 'adoption'>('lost');
+  const initialType = searchParams.get('type');
+  const [type, setType] = useState<'lost' | 'found' | 'adoption'>(
+    initialType === 'found' ? 'found' : initialType === 'adoption' ? 'adoption' : 'lost'
+  );
+
+  useEffect(() => {
+    const qType = searchParams.get('type');
+    if (qType === 'found' || qType === 'adoption' || qType === 'lost') {
+      setType(qType);
+    }
+  }, [searchParams]);
+
   const [species, setSpecies] = useState<'cat' | 'dog' | 'bird' | 'other'>('cat');
   const [petName, setPetName] = useState('');
   const [breed, setBreed] = useState('');
@@ -96,7 +112,7 @@ export default function PostPetPage() {
         eventDate,
         contactPhone: contactPhone.trim() || profile?.phone || '',
         status: 'active',
-        isApproved: true, // auto approve or admin moderate
+        isApproved: true,
         images: [] as { path: string; url: string }[],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -131,7 +147,26 @@ export default function PostPetPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      
+      {/* Top Back & Cancel Bar */}
+      <div className="mb-6 flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-stone-700 hover:text-stone-950 bg-white border border-stone-200 px-4 py-2 rounded-xl shadow-xs hover:bg-stone-50 transition-all"
+        >
+          <ArrowLeft className="w-4 h-4 text-amber-600" />
+          <span>হোমপেজে ফিরে যান</span>
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-stone-800 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <X className="w-3.5 h-3.5" />
+          <span>বাতিল</span>
+        </Link>
+      </div>
+
       <div className="bg-white rounded-3xl p-6 sm:p-10 border border-stone-200 shadow-xl">
         <div className="mb-8">
           <span className="text-xs font-bold text-amber-600 uppercase tracking-wider bg-amber-50 px-3 py-1 rounded-full">
@@ -163,7 +198,7 @@ export default function PostPetPage() {
           {/* Post Type Selector */}
           <div>
             <label className="block text-sm font-bold text-stone-700 mb-2">পোস্টের ধরন *</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[
                 { id: 'lost', label: '🚨 হারিয়ে গেছে', desc: 'আমার পোষ্য হারিয়েছে' },
                 { id: 'found', label: '🐾 পেয়েছি', desc: 'অচেনা প্রাণী পেয়েছি' },
@@ -175,12 +210,12 @@ export default function PostPetPage() {
                   onClick={() => setType(item.id as any)}
                   className={`p-3 rounded-2xl border text-center transition-all ${
                     type === item.id
-                      ? 'border-amber-600 bg-amber-50/50 text-amber-900 font-bold shadow-sm'
+                      ? 'border-amber-600 bg-amber-50/70 text-amber-900 font-bold shadow-sm'
                       : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 font-medium'
                   }`}
                 >
-                  <div className="text-sm">{item.label}</div>
-                  <div className="text-[11px] text-stone-500 mt-0.5">{item.desc}</div>
+                  <div className="text-xs sm:text-sm">{item.label}</div>
+                  <div className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5">{item.desc}</div>
                 </button>
               ))}
             </div>
@@ -383,6 +418,21 @@ export default function PostPetPage() {
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+export default function PostPetPage() {
+  return (
+    <div className="min-h-screen bg-[#F7F8F7]">
+      <Navbar />
+      <Suspense fallback={
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
+        </div>
+      }>
+        <PostPetForm />
+      </Suspense>
     </div>
   );
 }

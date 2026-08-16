@@ -30,6 +30,15 @@ export interface Pet {
   eventDate: string;
   status: PetStatus;
   isApproved: boolean;
+  isEmergency?: boolean;
+  rewardAmount?: string;
+  rescueClaim?: {
+    volunteerId: string;
+    volunteerName: string;
+    volunteerPhone?: string;
+    claimedAt: any;
+    status: 'on_the_way' | 'rescued';
+  } | null;
   reportCount?: number;
   matchCount?: number;
   sightingCount?: number;
@@ -46,8 +55,17 @@ export interface UserProfile {
   email: string;
   phone?: string;
   division?: string;
+  area?: string;
+  bio?: string;
   photoURL?: string;
   role?: 'user' | 'volunteer' | 'admin' | 'superadmin';
+  isBanned?: boolean;
+  bannedReason?: string;
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    whatsapp?: string;
+  };
   notifPrefs?: {
     match: boolean;
     sight: boolean;
@@ -61,8 +79,22 @@ export interface Comment {
   id?: string;
   petId: string;
   userId: string;
+  authorId?: string;
   author: string;
+  authorRole?: string;
   text: string;
+  createdAt: any;
+}
+
+export interface AppNotification {
+  id?: string;
+  type: 'comment' | 'sighting' | 'match' | 'rescue';
+  fromUserId: string;
+  fromUserName: string;
+  petId: string;
+  petName?: string;
+  message: string;
+  read: boolean;
   createdAt: any;
 }
 

@@ -1,20 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { 
   User, 
   LogOut, 
   Menu, 
   X,
-  Search,
+  Bell,
   Plus
 } from 'lucide-react';
 
 export default function Navbar() {
   const { user, profile, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Real-time unread notification count
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+    const q = query(
+      collection(db, 'users', user.uid, 'notifications'),
+      where('read', '==', false)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setUnreadCount(snap.size);
+    }, () => setUnreadCount(0));
+    return () => unsub();
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-[#E1E5E2]">
@@ -57,7 +73,7 @@ export default function Navbar() {
           </Link>
         </nav>
 
-        {/* Right Action / Post Button */}
+        {/* Right Action */}
         <div className="ml-auto flex items-center gap-3">
           <Link
             href="/post-pet"
@@ -77,9 +93,11 @@ export default function Navbar() {
                   <span>🛡️ অ্যাডমিন</span>
                 </Link>
               )}
+
+              {/* Dashboard link with notification badge */}
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 px-2 py-1 rounded-[6px] hover:bg-[#F1F3F1] transition-colors text-[13.5px] font-medium text-[#111614]"
+                className="relative flex items-center gap-2 px-2 py-1 rounded-[6px] hover:bg-[#F1F3F1] transition-colors text-[13.5px] font-medium text-[#111614]"
               >
                 {profile?.photoURL ? (
                   <img
@@ -93,7 +111,14 @@ export default function Navbar() {
                   </div>
                 )}
                 <span>{profile?.displayName?.split(' ')[0] || 'ড্যাশবোর্ড'}</span>
+                {/* Red notification badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
+
               <button
                 onClick={() => signOut()}
                 title="লগআউট"
@@ -153,6 +178,20 @@ export default function Navbar() {
           >
             রেসকিউ টিম
           </Link>
+          {user && (
+            <Link
+              href="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between px-3 py-2 rounded-[6px] font-medium text-[#4F5A55] hover:bg-[#F1F3F1]"
+            >
+              <span>আমার ড্যাশবোর্ড</span>
+              {unreadCount > 0 && (
+                <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
         </div>
       )}
     </header>

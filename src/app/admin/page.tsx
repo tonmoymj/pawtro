@@ -5,6 +5,7 @@ import { collection, getDocs, query, orderBy, limit, where } from 'firebase/fire
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import StatCard from '@/components/admin/StatCard';
+import RoleBadge from '@/components/RoleBadge';
 import Link from 'next/link';
 import {
   Users,
@@ -18,6 +19,8 @@ import {
   TrendingUp,
   Loader2,
   ArrowRight,
+  MapPin,
+  Award
 } from 'lucide-react';
 
 interface AdminStats {
@@ -29,6 +32,8 @@ interface AdminStats {
   pendingApproval: number;
   reportedPosts: number;
   resolvedPets: number;
+  successRate: number;
+  divisionCounts: Record<string, number>;
   recentPets: any[];
   recentUsers: any[];
 }
@@ -57,15 +62,27 @@ export default function AdminOverviewPage() {
       const recentPets = recentPetsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const recentUsers = recentUsersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+      const resolved = pets.filter(p => p.status === 'resolved').length;
+      const total = pets.length;
+      const successRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+
+      const divCounts: Record<string, number> = {};
+      pets.forEach(p => {
+        const div = p.division || 'অন্যান্য';
+        divCounts[div] = (divCounts[div] || 0) + 1;
+      });
+
       setStats({
-        totalPets: pets.length,
+        totalPets: total,
         totalUsers: usersSnap.size,
         lostPets: pets.filter(p => p.type === 'lost').length,
         foundPets: pets.filter(p => p.type === 'found').length,
         adoptionPets: pets.filter(p => p.type === 'adoption').length,
         pendingApproval: pets.filter(p => !p.isApproved).length,
         reportedPosts: pets.filter(p => (p.reportCount || 0) > 0).length,
-        resolvedPets: pets.filter(p => p.status === 'resolved').length,
+        resolvedPets: resolved,
+        successRate,
+        divisionCounts: divCounts,
         recentPets,
         recentUsers,
       });
@@ -75,7 +92,9 @@ export default function AdminOverviewPage() {
       setStats({
         totalPets: 12, totalUsers: 47, lostPets: 7, foundPets: 3,
         adoptionPets: 2, pendingApproval: 3, reportedPosts: 1,
-        resolvedPets: 5, recentPets: [], recentUsers: [],
+        resolvedPets: 5, successRate: 42,
+        divisionCounts: { 'ঢাকা': 6, 'চট্টগ্রাম': 3, 'রাজশাহী': 2, 'সিলেট': 1 },
+        recentPets: [], recentUsers: [],
       });
     } finally {
       setFetching(false);
@@ -114,7 +133,7 @@ export default function AdminOverviewPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#111614]">কমান্ড সেন্টার</h1>
-          <p className="text-[#8A948F] text-sm mt-0.5">Pawtro প্ল্যাটফর্মের পূর্ণাঙ্গ নিয়ন্ত্রণ ড্যাশবোর্ড</p>
+          <p className="text-[#8A948F] text-sm mt-0.5">Pawtro প্ল্যাটফর্মের পূর্ণাঙ্গ নিয়ন্ত্রণ ড্যাশবোর্ড</p>
         </div>
         <div className="bg-[#F1F8F6] border border-[#C2DAD5] text-[#1D6B5F] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 bg-[#1D6B5F] rounded-full animate-pulse"></span>
@@ -126,38 +145,56 @@ export default function AdminOverviewPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="মোট পোস্ট" value={s.totalPets} icon={FileText} color="green" delta={s.pendingApproval} />
         <StatCard title="রেজিস্টার্ড ইউজার" value={s.totalUsers} icon={Users} color="blue" />
-        <StatCard title="মুলতবি অনুমোদন" value={s.pendingApproval} icon={Clock} color="amber" />
+        <StatCard title="সাফল্যের হার" value={`${s.successRate}%`} icon={TrendingUp} color="green" />
         <StatCard title="ফ্ল্যাগড / রিপোর্ট" value={s.reportedPosts} icon={AlertTriangle} color="red" />
       </div>
 
       {/* Breakdown Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Category Breakdown */}
-        <div className="bg-white rounded-[8px] border border-[#E1E5E2] p-5 col-span-1">
-          <h3 className="text-[13.5px] font-bold text-[#111614] mb-4">পোস্ট ক্যাটাগরি ব্রেকডাউন</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'হারিয়ে গেছে', count: s.lostPets, total: s.totalPets, color: '#9E3B36' },
-              { label: 'পাওয়া গেছে', count: s.foundPets, total: s.totalPets, color: '#1D6B5F' },
-              { label: 'দত্তক', count: s.adoptionPets, total: s.totalPets, color: '#46577F' },
-              { label: 'সমাধান হয়েছে', count: s.resolvedPets, total: s.totalPets, color: '#8A948F' },
-            ].map(item => (
-              <div key={item.label} className="space-y-1">
-                <div className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-[#4F5A55] font-medium">{item.label}</span>
-                  <span className="num font-bold text-[#111614]">{item.count}</span>
+        <div className="bg-white rounded-[8px] border border-[#E1E5E2] p-5 col-span-1 space-y-6">
+          <div>
+            <h3 className="text-[13.5px] font-bold text-[#111614] mb-3">পোস্ট ক্যাটাগরি ব্রেকডাউন</h3>
+            <div className="space-y-2.5">
+              {[
+                { label: 'হারিয়ে গেছে', count: s.lostPets, total: s.totalPets, color: '#9E3B36' },
+                { label: 'পাওয়া গেছে', count: s.foundPets, total: s.totalPets, color: '#1D6B5F' },
+                { label: 'দত্তক', count: s.adoptionPets, total: s.totalPets, color: '#46577F' },
+                { label: 'সমাধান হয়েছে', count: s.resolvedPets, total: s.totalPets, color: '#059669' },
+              ].map(item => (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-[#4F5A55] font-medium">{item.label}</span>
+                    <span className="font-bold text-[#111614]">{item.count}</span>
+                  </div>
+                  <div className="h-1.5 bg-[#F1F3F1] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${item.total > 0 ? Math.round((item.count / item.total) * 100) : 0}%`,
+                        backgroundColor: item.color,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-[#F1F3F1] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${item.total > 0 ? Math.round((item.count / item.total) * 100) : 0}%`,
-                      backgroundColor: item.color,
-                    }}
-                  />
+              ))}
+            </div>
+          </div>
+
+          {/* Division Breakdown */}
+          <div className="pt-4 border-t border-[#E1E5E2]">
+            <h3 className="text-[13px] font-bold text-[#111614] mb-2.5 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-amber-600" />
+              <span>বিভাগভিত্তিক কেস</span>
+            </h3>
+            <div className="space-y-1.5 text-xs">
+              {Object.entries(s.divisionCounts).map(([div, count]) => (
+                <div key={div} className="flex items-center justify-between text-[#4F5A55]">
+                  <span>{div}</span>
+                  <span className="font-bold text-[#111614] bg-[#F1F3F1] px-1.5 py-0.5 rounded text-[11px]">{count}</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
@@ -173,7 +210,7 @@ export default function AdminOverviewPage() {
             {s.recentPets.length > 0 ? (
               s.recentPets.slice(0, 6).map((pet: any) => (
                 <div key={pet.id} className="flex items-center gap-3 py-2 border-b border-[#F1F3F1] last:border-0">
-                  <div className="w-8 h-8 rounded-[5px] bg-[#F1F3F1] overflow-hidden flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-[#F1F3F1] overflow-hidden flex-shrink-0">
                     {pet.images?.[0]?.url && (
                       <img src={pet.images[0].url} alt="" className="w-full h-full object-cover" />
                     )}
@@ -187,7 +224,7 @@ export default function AdminOverviewPage() {
                           background: pet.type === 'lost' ? '#FBF4F3' : pet.type === 'found' ? '#F1F8F6' : '#F3F5FA',
                         }}
                       >
-                        {pet.type === 'lost' ? 'হারানো' : pet.type === 'found' ? 'পাওয়া' : 'দত্তক'}
+                        {pet.type === 'lost' ? 'হারানো' : pet.type === 'found' ? 'পাওয়া' : 'দত্তক'}
                       </span>
                       <span className="text-[13px] font-semibold text-[#111614] truncate">
                         {pet.petName || 'অচেনা প্রাণী'}
@@ -210,7 +247,7 @@ export default function AdminOverviewPage() {
       {/* Recent Users */}
       <div className="bg-white rounded-[8px] border border-[#E1E5E2] p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[13.5px] font-bold text-[#111614]">সাম্প্রতিক রেজিস্ট্রেশন</h3>
+          <h3 className="text-[13.5px] font-bold text-[#111614]">সাম্প্রতিক রেজিস্ট্রেশন ও রোল</h3>
           <Link href="/admin/users" className="text-[#1D6B5F] text-[12px] font-semibold flex items-center gap-1 hover:underline">
             সব ইউজার <ArrowRight className="w-3.5 h-3.5" />
           </Link>
@@ -224,7 +261,9 @@ export default function AdminOverviewPage() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-[12.5px] font-semibold text-[#111614] truncate">{u.displayName || 'ইউজার'}</div>
-                  <div className="text-[10.5px] text-[#8A948F]">{u.role || 'user'}</div>
+                  <div className="mt-0.5">
+                    <RoleBadge role={u.role || 'user'} size="xs" />
+                  </div>
                 </div>
               </div>
             ))

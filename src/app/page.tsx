@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 // Types
 export type PetType = 'lost' | 'found' | 'adopt';
@@ -313,6 +315,7 @@ const Icons = {
 
 export default function PawtroHome() {
   const router = useRouter();
+  const { user, profile, signOut } = useAuth();
   const [data, setData] = useState<Pet[]>(INITIAL_DATA);
   const [stories, setStories] = useState<Story[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -1166,6 +1169,68 @@ export default function PawtroHome() {
           <button className="btn" id="newBtn" onClick={() => router.push('/post-pet')}>
             পোস্ট করুন
           </button>
+
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {(profile?.role === 'admin' || profile?.role === 'superadmin') && (
+                <Link
+                  href="/admin"
+                  className="btn ghost sm"
+                  title="অ্যাডমিন প্যানেল"
+                  style={{ color: '#1D6B5F', borderColor: '#1D6B5F', fontWeight: 700 }}
+                >
+                  <span>🛡️ অ্যাডমিন</span>
+                </Link>
+              )}
+              <Link
+                href="/dashboard"
+                className="btn ghost sm"
+                title="ড্যাশবোর্ড ও প্রোফাইল"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {profile?.photoURL ? (
+                  <img
+                    src={profile.photoURL}
+                    alt={profile.displayName || 'Profile'}
+                    style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                )}
+                <span>{profile?.displayName?.split(' ')[0] || 'ড্যাশবোর্ড'}</span>
+              </Link>
+              <button
+                onClick={() => signOut()}
+                title="লগআউট করুন"
+                className="btn ghost sm"
+                style={{ padding: '6px 9px', color: 'var(--ink-3)' }}
+                aria-label="লগআউট"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="btn ghost sm"
+              title="লগইন বা সাইনআপ করুন"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              <span>লগইন / সাইনআপ</span>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -1192,27 +1257,37 @@ export default function PawtroHome() {
                 আপনার এলাকার হারানো ও কুড়িয়ে পাওয়া পোষ্যের পোস্ট এক জায়গায়। ছবি, দূরত্ব আর সময় মিলিয়ে Pawtro নিজে থেকেই সম্ভাব্য মিল খুঁজে বের করে — আপনাকে শুধু যাচাই করতে হয়।
               </p>
               <div className="hactions">
-                <button className="bigbtn pri" onClick={() => router.push('/post-pet')}>
+                <button className="bigbtn pri" onClick={() => router.push('/post-pet?type=lost')}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z" />
                     <circle cx="12" cy="10" r="2.4" />
                   </svg>
                   আমার পোষ্য হারিয়েছে
                 </button>
-                <button className="bigbtn sec" onClick={() => router.push('/post-pet')}>
+                <button className="bigbtn sec" onClick={() => router.push('/post-pet?type=found')}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                   একটি পোষ্য পেয়েছি
                 </button>
+                <button className="bigbtn sec" onClick={() => router.push('/post-pet?type=adoption')}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                  </svg>
+                  দত্তক দিতে চাই
+                </button>
                 <button
-                  className="bigbtn link"
+                  className="bigbtn sec"
                   onClick={() => {
                     setTab('adopt');
                     document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
                 >
-                  দত্তক নিতে চাই →
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  দত্তক নিতে চাই
                 </button>
               </div>
               <div className="hstats">

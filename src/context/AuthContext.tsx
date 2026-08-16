@@ -7,6 +7,7 @@ import {
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  sendPasswordResetEmail,
   signOut as fbSignOut, 
   updateProfile 
 } from 'firebase/auth';
@@ -21,6 +22,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
@@ -110,6 +112,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setProfile(newProfile);
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const signOut = async () => {
     await fbSignOut(auth);
     setProfile(null);
@@ -131,6 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
+        resetPassword,
         signOut,
         updateUserProfile,
       }}
