@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import PostPetModal from '@/components/PostPetModal';
+import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // Types
 export type PetType = 'lost' | 'found' | 'adopt';
@@ -126,85 +128,7 @@ const RESCUE_TEAMS = [
   { name: 'Bangladesh Animal Welfare Association (BAWA)', area: 'ঢাকা', verified: true, desc: 'প্রাণী কল্যাণ সংস্থা — উদ্ধার, চিকিৎসা সহায়তা ও দত্তক সমন্বয়।', phone: '+8801346990244' },
 ];
 
-const INITIAL_DATA: Pet[] = [
-  {
-    id: 1, type: 'lost', species: 'dog', breed: 'দেশি', colors: ['বাদামি', 'সাদা'], name: 'বাদশা', photos: 4,
-    division: 'রাজশাহী', area: 'উপশহর, রাজশাহী', lat: 24.3608, lng: 88.5905, date: '2026-07-28', sex: 'পুরুষ', age: '৩ বছর',
-    marks: 'গলায় লাল বেল্ট, বাঁ কানে ছোট কাটা দাগ', sig: [0.82, 0.31, 0.47],
-    sightings: [
-      { lat: 24.3641, lng: 88.5963, date: '2026-07-29', area: 'ছোটবনগ্রাম মোড়', note: 'রাত ৯টার দিকে চায়ের দোকানের পাশে দেখেছি, গলায় লাল বেল্ট ছিল।' },
-      { lat: 24.3672, lng: 88.5998, date: '2026-07-30', area: 'লক্ষ্মীপুর', note: 'সকালে হাসপাতালের গলিতে, খুঁড়িয়ে হাঁটছিল না — সুস্থ মনে হলো।' },
-    ],
-    desc: 'সন্ধ্যায় গেট খোলা পেয়ে বেরিয়ে যায়। ডাক দিলে সাড়া দেয়, মানুষ দেখলে ভয় পায় না।',
-  },
-  {
-    id: 2, type: 'found', species: 'dog', breed: 'দেশি', colors: ['বাদামি'], photos: 2,
-    division: 'রাজশাহী', area: 'সাহেব বাজার, রাজশাহী', lat: 24.3695, lng: 88.6021, date: '2026-07-30', sex: 'পুরুষ', age: '২–৪ বছর',
-    marks: 'গলায় বেল্টের দাগ আছে, বেল্ট নেই', sig: [0.79, 0.35, 0.44],
-    desc: 'দোকানের সামনে দুদিন ধরে বসে আছে। খাবার দিয়েছি, সুস্থ আছে। মালিক খুঁজছি।',
-  },
-  {
-    id: 3, type: 'found', species: 'dog', breed: 'দেশি', colors: ['কালো', 'সাদা'], photos: 3,
-    division: 'রাজশাহী', area: 'কাজলা, রাজশাহী', lat: 24.3560, lng: 88.6355, date: '2026-07-25', sex: 'মহিলা', age: '১ বছর',
-    marks: 'বুকে সাদা ছোপ', sig: [0.30, 0.74, 0.52],
-    desc: 'ভার্সিটি গেটের কাছে ঘোরাঘুরি করছিল। এখন আমার কাছে আছে।',
-  },
-  {
-    id: 4, type: 'lost', species: 'cat', breed: 'পার্সিয়ান মিক্স', colors: ['সাদা', 'ধূসর'], name: 'মিমি', photos: 5,
-    division: 'রাজশাহী', area: 'শালবাগান, রাজশাহী', lat: 24.3812, lng: 88.6193, date: '2026-07-31', sex: 'মহিলা', age: '২ বছর',
-    marks: 'চোখ নীল, লেজের ডগা ধূসর', sig: [0.41, 0.88, 0.27],
-    desc: 'জানালা দিয়ে বেরিয়ে গেছে। ভীতু স্বভাবের, ডাকলে লুকিয়ে পড়ে।',
-  },
-  {
-    id: 5, type: 'found', species: 'cat', breed: 'অজানা', colors: ['সাদা', 'ধূসর'], photos: 2,
-    division: 'রাজশাহী', area: 'পদ্মা আবাসিক, রাজশাহী', lat: 24.3721, lng: 88.6288, date: '2026-08-01', sex: 'মহিলা', age: '১–৩ বছর',
-    marks: 'লম্বা লোম, নীল চোখ', sig: [0.44, 0.85, 0.30],
-    desc: 'বারান্দায় এসে বসেছিল, খুব ভয় পাচ্ছিল। ঘরে রেখেছি।',
-  },
-  {
-    id: 6, type: 'adopt', species: 'cat', breed: 'দেশি', colors: ['কমলা'], name: 'লাড্ডু', photos: 6,
-    division: 'রাজশাহী', area: 'বিনোদপুর, রাজশাহী', lat: 24.3611, lng: 88.6338, date: '2026-07-20', sex: 'পুরুষ', age: '৪ মাস',
-    marks: 'টিকা দেওয়া আছে', sig: [0.62, 0.20, 0.80],
-    desc: 'রাস্তা থেকে উদ্ধার করা, এখন সুস্থ ও খেলুড়ে। দায়িত্বশীল পরিবার খুঁজছি।',
-  },
-  {
-    id: 7, type: 'adopt', species: 'dog', breed: 'দেশি', colors: ['কালো'], name: 'রকি', photos: 3,
-    division: 'রাজশাহী', area: 'তেরখাদিয়া, রাজশাহী', lat: 24.3849, lng: 88.5878, date: '2026-07-15', sex: 'পুরুষ', age: '৭ মাস',
-    marks: 'কৃমির ওষুধ ও প্রথম টিকা দেওয়া', sig: [0.25, 0.55, 0.71],
-    desc: 'শান্ত স্বভাব, বাচ্চাদের সাথে ভালো মেশে। উঠান আছে এমন বাসা হলে ভালো হয়।',
-  },
-  {
-    id: 8, type: 'lost', species: 'bird', breed: 'বাজরিগার', colors: ['সবুজ', 'হলুদ'], name: 'টিয়া', photos: 2,
-    division: 'রাজশাহী', area: 'নওদাপাড়া, রাজশাহী', lat: 24.3968, lng: 88.6224, date: '2026-07-29', sex: 'পুরুষ', age: '১ বছর',
-    marks: 'পায়ে নীল রিং', sig: [0.55, 0.42, 0.63],
-    desc: 'খাঁচা পরিষ্কারের সময় উড়ে গেছে। শিস দিলে সাড়া দেয়।',
-  },
-  {
-    id: 9, type: 'found', species: 'bird', breed: 'বাজরিগার', colors: ['সবুজ'], photos: 1,
-    division: 'রাজশাহী', area: 'ভদ্রা, রাজশাহী', lat: 24.3893, lng: 88.6106, date: '2026-07-30', sex: 'অজানা', age: 'অজানা',
-    marks: 'পায়ে রিং আছে', sig: [0.53, 0.45, 0.60],
-    desc: 'ছাদে এসে বসেছিল, ধরে খাঁচায় রেখেছি।',
-  },
-  {
-    id: 11, type: 'lost', species: 'cat', breed: 'দেশি', colors: ['কালো'], name: 'কাজল', photos: 3,
-    division: 'ঢাকা', area: 'ধানমন্ডি, ঢাকা', lat: 23.7461, lng: 90.3742, date: '2026-07-27', sex: 'পুরুষ', age: '৩ বছর',
-    marks: 'ডান পায়ে সাদা মোজার মতো দাগ', sig: [0.36, 0.60, 0.44],
-    desc: 'ছাদের দরজা খোলা ছিল। রাতে বাসার আশপাশেই থাকে সাধারণত।',
-  },
-  {
-    id: 12, type: 'adopt', species: 'dog', breed: 'দেশি', colors: ['বাদামি', 'সাদা'], name: 'মেঘ', photos: 4,
-    division: 'চট্টগ্রাম', area: 'পাঁচলাইশ, চট্টগ্রাম', lat: 22.3606, lng: 91.8214, date: '2026-07-22', sex: 'মহিলা', age: '৫ মাস',
-    marks: 'দুটি টিকা সম্পন্ন', sig: [0.48, 0.38, 0.66], health: { vaccinated: 'হ্যাঁ', notes: 'কৃমির ওষুধ দেওয়া, সুস্থ' },
-    org: 'Obhoyaronno — Bangladesh Animal Welfare Foundation',
-    desc: 'উদ্ধারের পর সুস্থ হয়েছে। শান্ত ও মানুষভক্ত, ফ্ল্যাটেও রাখা যায়।',
-  },
-  {
-    id: 10, type: 'adopt', species: 'other', breed: 'খরগোশ', colors: ['সাদা'], name: 'তুলো', photos: 2, mine: true,
-    division: 'রাজশাহী', area: 'কোর্ট স্টেশন, রাজশাহী', lat: 24.3556, lng: 88.5710, date: '2026-07-18', sex: 'মহিলা', age: '৬ মাস',
-    marks: '—', sig: [0.10, 0.66, 0.38],
-    desc: 'জোড়া থেকে একটি রয়ে গেছে। খাঁচা সহ দেওয়া হবে।',
-  },
-];
+const INITIAL_DATA: Pet[] = [];
 
 const ROMAN: Record<string, string> = {
   kukur: 'কুকুর', dog: 'কুকুর', biral: 'বিড়াল', beral: 'বিড়াল', cat: 'বিড়াল', pakhi: 'পাখি', bird: 'পাখি',
@@ -324,6 +248,49 @@ export default function PawtroHome() {
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [postModalType, setPostModalType] = useState<'lost' | 'found' | 'adoption'>('lost');
 
+  // Real-time live Firestore data listener
+  useEffect(() => {
+    try {
+      const q = query(collection(db, 'pets'), orderBy('createdAt', 'desc'));
+      const unsub = onSnapshot(q, (snap) => {
+        if (!snap.empty) {
+          const livePets: Pet[] = snap.docs.map((docSnap, index) => {
+            const d = docSnap.data();
+            return {
+              id: (index + 1) as any,
+              type: (d.type === 'adoption' ? 'adopt' : d.type) as PetType,
+              species: (d.species || 'cat') as Species,
+              breed: d.breed || 'দেশি',
+              colors: Array.isArray(d.colors) && d.colors.length ? d.colors : ['মিশ্র'],
+              name: d.petName || (d.species === 'cat' ? 'বিড়াল' : 'কুকুর'),
+              photos: d.images?.length || 1,
+              images: d.images?.map((im: any) => im.url) || [],
+              division: d.division || 'ঢাকা',
+              area: d.area || '',
+              lat: d.lat || 23.8103,
+              lng: d.lng || 90.4125,
+              date: d.eventDate || new Date().toISOString().split('T')[0],
+              sex: d.sex === 'male' ? 'পুরুষ' : d.sex === 'female' ? 'মহিলা' : 'অজানা',
+              age: d.age || '—',
+              marks: d.marks || '—',
+              sig: [0.5, 0.5, 0.5],
+              desc: d.description || '',
+              resolved: d.status === 'resolved',
+            };
+          });
+          setData(livePets);
+        } else {
+          setData([]);
+        }
+      }, (err) => {
+        console.warn('Live pets snapshot fallback:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Live pets listener setup notice:', e);
+    }
+  }, []);
+
   // UI state
   const [page, setPage] = useState<'board' | 'stories' | 'help'>('board');
   const [tab, setTab] = useState<string>('all');
@@ -430,8 +397,10 @@ export default function PawtroHome() {
           const shared = pet.colors.filter((c) => o.colors.includes(c)).length;
           const colorScore = shared / Math.max(pet.colors.length, o.colors.length);
           const breedBonus = pet.breed && pet.breed === o.breed ? 0.25 : 0;
+          const petSig = pet.sig || [0.5, 0.5, 0.5];
+          const oSig = o.sig || [0.5, 0.5, 0.5];
           const parts = {
-            visual: Math.max(0, cos(pet.sig, o.sig)) * 0.5,
+            visual: Math.max(0, cos(petSig, oSig)) * 0.5,
             dist: Math.max(0, 1 - dist / 15) * 0.25,
             traits: Math.min(1, colorScore + breedBonus) * 0.15,
             time: Math.max(0, 1 - dayGap / 30) * 0.1,

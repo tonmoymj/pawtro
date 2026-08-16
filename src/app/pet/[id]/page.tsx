@@ -74,31 +74,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           if (ownerDoc.exists()) setOwnerProfile(ownerDoc.data() as UserProfile);
         } catch {}
       } else {
-        setPet({
-          id: petId,
-          userId: 'user-demo',
-          type: 'lost',
-          species: 'cat',
-          petName: 'মিকি (Miki)',
-          breed: 'দেশি বিড়াল',
-          colors: ['সাদা', 'বাদামি'],
-          sex: 'male',
-          age: '১.৫ বছর',
-          marks: 'গলায় লাল বেল্ট ও লেজের ডগায় সাদা দাগ',
-          description: 'ধানমন্ডি ৮/এ লেকের কাছে গত ১০ আগস্ট বিকেলে হারিয়ে গেছে। খুব চঞ্চল ও ডাকাডাকি করে। কেউ সন্ধান পেলে দয়া করে যোগাযোগ করুন।',
-          images: [{ path: '', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&auto=format&fit=crop&q=80' }],
-          division: 'ঢাকা',
-          area: 'ধানমন্ডি ৮/এ, ঢাকা',
-          lat: 23.7461,
-          lng: 90.3742,
-          geohash: 'wh0r8',
-          eventDate: '২০২৬-০৮-১০',
-          contactPhone: '01711000000',
-          status: 'active',
-          isApproved: true,
-          createdAt: '2026-08-10',
-          updatedAt: '2026-08-10',
-        });
+        setPet(null);
       }
 
       // Fetch Comments
