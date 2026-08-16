@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import PostPetModal from '@/components/PostPetModal';
 
 // Types
 export type PetType = 'lost' | 'found' | 'adopt';
@@ -320,6 +321,8 @@ export default function PawtroHome() {
   const [stories, setStories] = useState<Story[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
   const [readNotifs, setReadNotifs] = useState<number[]>([]);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [postModalType, setPostModalType] = useState<'lost' | 'found' | 'adoption'>('lost');
 
   // UI state
   const [page, setPage] = useState<'board' | 'stories' | 'help'>('board');
@@ -1166,7 +1169,14 @@ export default function PawtroHome() {
           >
             ম্যাপ
           </button>
-          <button className="btn" id="newBtn" onClick={() => router.push('/post-pet')}>
+          <button
+            className="btn"
+            id="newBtn"
+            onClick={() => {
+              setPostModalType('lost');
+              setIsPostModalOpen(true);
+            }}
+          >
             পোস্ট করুন
           </button>
 
@@ -1257,20 +1267,38 @@ export default function PawtroHome() {
                 আপনার এলাকার হারানো ও কুড়িয়ে পাওয়া পোষ্যের পোস্ট এক জায়গায়। ছবি, দূরত্ব আর সময় মিলিয়ে Pawtro নিজে থেকেই সম্ভাব্য মিল খুঁজে বের করে — আপনাকে শুধু যাচাই করতে হয়।
               </p>
               <div className="hactions">
-                <button className="bigbtn pri" onClick={() => router.push('/post-pet?type=lost')}>
+                <button
+                  className="bigbtn pri"
+                  onClick={() => {
+                    setPostModalType('lost');
+                    setIsPostModalOpen(true);
+                  }}
+                >
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z" />
                     <circle cx="12" cy="10" r="2.4" />
                   </svg>
                   আমার পোষ্য হারিয়েছে
                 </button>
-                <button className="bigbtn sec" onClick={() => router.push('/post-pet?type=found')}>
+                <button
+                  className="bigbtn sec"
+                  onClick={() => {
+                    setPostModalType('found');
+                    setIsPostModalOpen(true);
+                  }}
+                >
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                   একটি পোষ্য পেয়েছি
                 </button>
-                <button className="bigbtn sec" onClick={() => router.push('/post-pet?type=adoption')}>
+                <button
+                  className="bigbtn sec"
+                  onClick={() => {
+                    setPostModalType('adoption');
+                    setIsPostModalOpen(true);
+                  }}
+                >
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                   </svg>
@@ -2648,6 +2676,13 @@ export default function PawtroHome() {
       <div className={`toast ${toastMessage ? 'on' : ''}`} id="toast">
         {toastMessage}
       </div>
+
+      {/* ---------- POST PET POPUP MODAL ---------- */}
+      <PostPetModal
+        isOpen={isPostModalOpen}
+        onClose={() => setIsPostModalOpen(false)}
+        initialType={postModalType}
+      />
     </div>
   );
 }
