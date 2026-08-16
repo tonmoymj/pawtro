@@ -1595,10 +1595,20 @@ export default function PawtroHome() {
                 })
               ) : (
                 <div className="empty">
-                  <h3>এই ফিল্টারে কোনো পোস্ট নেই</h3>
-                  <p>দূরত্ব বাড়িয়ে দেখুন, অথবা নতুন একটি পোস্ট দিয়ে খোঁজ শুরু করুন।</p>
-                  <button className="btn" onClick={() => router.push('/post-pet')}>
-                    পোস্ট করুন
+                  <svg width="48" height="48" viewBox="0 0 32 32" fill="none" style={{ opacity: 0.25, marginBottom: '12px' }}>
+                    <ellipse cx="8" cy="12" rx="3.2" ry="4.2" fill="currentColor" />
+                    <ellipse cx="14.5" cy="8.5" rx="3" ry="4" fill="currentColor" />
+                    <ellipse cx="21" cy="8.5" rx="3" ry="4" fill="currentColor" />
+                    <ellipse cx="27" cy="12" rx="3.2" ry="4.2" fill="currentColor" />
+                    <path d="M7 19.5c0-5 3.5-8.5 9-8.5s9 3.5 9 8.5c0 3.5-2 5.5-4.5 6.5-1.5.6-3 .5-4.5 0C13.5 24.5 7 23 7 19.5Z" fill="currentColor" />
+                  </svg>
+                  <h3>{data.length === 0 ? 'এখনো কোনো পোস্ট নেই' : 'এই ফিল্টারে কোনো পোস্ট নেই'}</h3>
+                  <p>{data.length === 0
+                    ? 'প্রথম হারানো বা পাওয়া পোষ্যের খবর দিন — পুরো এলাকা জানতে পারবে।'
+                    : 'দূরত্ব বাড়িয়ে দেখুন, অথবা নতুন একটি পোস্ট দিয়ে খোঁজ শুরু করুন।'
+                  }</p>
+                  <button className="btn" onClick={() => { setIsPostModalOpen(true); setPostModalType('lost'); }}>
+                    প্রথম পোস্ট করুন
                   </button>
                 </div>
               )}
@@ -1607,6 +1617,42 @@ export default function PawtroHome() {
 
           <section className="mappane">
             <div id="map" ref={mapContainerRef} />
+            {data.length === 0 && (
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0,
+                bottom: 48,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                pointerEvents: 'none',
+              }}>
+                <div style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '12px',
+                  padding: '20px 28px',
+                  textAlign: 'center',
+                  boxShadow: 'var(--shadow-md)',
+                  maxWidth: '240px',
+                }}>
+                  <svg width="36" height="36" viewBox="0 0 32 32" fill="none" style={{ opacity: 0.3, display: 'block', margin: '0 auto 10px' }}>
+                    <ellipse cx="8" cy="12" rx="3.2" ry="4.2" fill="currentColor" />
+                    <ellipse cx="14.5" cy="8.5" rx="3" ry="4" fill="currentColor" />
+                    <ellipse cx="21" cy="8.5" rx="3" ry="4" fill="currentColor" />
+                    <ellipse cx="27" cy="12" rx="3.2" ry="4.2" fill="currentColor" />
+                    <path d="M7 19.5c0-5 3.5-8.5 9-8.5s9 3.5 9 8.5c0 3.5-2 5.5-4.5 6.5-1.5.6-3 .5-4.5 0C13.5 24.5 7 23 7 19.5Z" fill="currentColor" />
+                  </svg>
+                  <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '4px' }}>
+                    ম্যাপে কোনো পোস্ট নেই
+                  </p>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--ink-3)', lineHeight: 1.55 }}>
+                    প্রথম পোস্ট হলেই এখানে মার্কার দেখাবে
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="maplegend">
               <span className="key">
                 <i className="dot" style={{ background: 'var(--lost)' }} />

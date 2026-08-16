@@ -583,6 +583,7 @@ input[type=range] {
   border: 1px solid var(--line);
   border-radius: var(--r);
   overflow: hidden;
+  position: relative;
 }
 
 #map {
