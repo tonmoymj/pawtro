@@ -38,32 +38,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        const isSuper = currentUser.email === 'tonmoymbm@gmail.com';
+        // Immediate baseline profile from Google Auth
+        const baselineProfile: UserProfile = {
+          uid: currentUser.uid,
+          displayName: currentUser.displayName || (isSuper ? 'Super Admin' : 'ব্যবহারকারী'),
+          email: currentUser.email || '',
+          photoURL: currentUser.photoURL || '',
+          role: isSuper ? 'superadmin' : 'user',
+          notifPrefs: { match: true, sight: true, digest: false, remind: true },
+        };
+        setProfile(baselineProfile);
+
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           const userDoc = await getDoc(userDocRef);
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
-            if (currentUser.email === 'tonmoymbm@gmail.com' && data.role !== 'superadmin') {
-              await setDoc(userDocRef, { role: 'superadmin' }, { merge: true });
+            if (isSuper && data.role !== 'superadmin') {
+              try { await setDoc(userDocRef, { role: 'superadmin' }, { merge: true }); } catch {}
               data.role = 'superadmin';
             }
-            setProfile(data);
+            setProfile({
+              ...baselineProfile,
+              ...data,
+              displayName: data.displayName || currentUser.displayName || baselineProfile.displayName,
+              photoURL: data.photoURL || currentUser.photoURL || baselineProfile.photoURL,
+              role: isSuper ? 'superadmin' : (data.role || 'user'),
+            });
           } else {
-            const isOwner = currentUser.email === 'tonmoymbm@gmail.com';
             const newProfile: UserProfile = {
-              uid: currentUser.uid,
-              displayName: currentUser.displayName || 'ব্যবহারকারী',
-              email: currentUser.email || '',
-              photoURL: currentUser.photoURL || '',
-              role: isOwner ? 'superadmin' : 'user',
-              notifPrefs: { match: true, sight: true, digest: false, remind: true },
+              ...baselineProfile,
               createdAt: serverTimestamp(),
             };
-            await setDoc(userDocRef, newProfile);
+            try { await setDoc(userDocRef, newProfile); } catch {}
             setProfile(newProfile);
           }
         } catch (err) {
-          console.error('Error fetching user profile:', err);
+          console.warn('Firestore user fetch notice (using auth baseline):', err);
         }
       } else {
         setProfile(null);
@@ -76,20 +88,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     const res = await signInWithPopup(auth, googleProvider);
-    const userDocRef = doc(db, 'users', res.user.uid);
-    const userDoc = await getDoc(userDocRef);
-    if (!userDoc.exists()) {
-      const newProfile: UserProfile = {
-        uid: res.user.uid,
-        displayName: res.user.displayName || 'ব্যবহারকারী',
-        email: res.user.email || '',
-        photoURL: res.user.photoURL || '',
-        role: 'user',
-        notifPrefs: { match: true, sight: true, digest: false, remind: true },
-        createdAt: serverTimestamp(),
-      };
-      await setDoc(userDocRef, newProfile);
-      setProfile(newProfile);
+    const isSuper = res.user.email === 'tonmoymbm@gmail.com';
+    const baselineProfile: UserProfile = {
+      uid: res.user.uid,
+      displayName: res.user.displayName || (isSuper ? 'Super Admin' : 'ব্যবহারকারী'),
+      email: res.user.email || '',
+      photoURL: res.user.photoURL || '',
+      role: isSuper ? 'superadmin' : 'user',
+      notifPrefs: { match: true, sight: true, digest: false, remind: true },
+    };
+    setProfile(baselineProfile);
+
+    try {
+      const userDocRef = doc(db, 'users', res.user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        const newProfile: UserProfile = {
+          ...baselineProfile,
+          createdAt: serverTimestamp(),
+        };
+        try { await setDoc(userDocRef, newProfile); } catch {}
+        setProfile(newProfile);
+      } else {
+        const data = userDoc.data() as UserProfile;
+        if (isSuper && data.role !== 'superadmin') {
+          try { await setDoc(userDocRef, { role: 'superadmin' }, { merge: true }); } catch {}
+          data.role = 'superadmin';
+        }
+        setProfile({
+          ...baselineProfile,
+          ...data,
+          displayName: data.displayName || res.user.displayName || baselineProfile.displayName,
+          photoURL: data.photoURL || res.user.photoURL || baselineProfile.photoURL,
+          role: isSuper ? 'superadmin' : (data.role || 'user'),
+        });
+      }
+    } catch (err) {
+      console.warn('Google sign in firestore sync notice:', err);
     }
   };
 
