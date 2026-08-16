@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "Pawtro — হারানো পোষ্য ও দত্তক | বাংলাদেশ",
   description:
     "হারানো ও কুড়িয়ে পাওয়া পোষা প্রাণীর খোঁজ এক জায়গায়। ছবি, দূরত্ব ও সময় মিলিয়ে Pawtro নিজে থেকেই সম্ভাব্য মিল খুঁজে বের করে।",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: {
     title: "Pawtro — হারানো পোষ্য ঘরে ফিরুক",
     description:
@@ -37,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="bn" className={`${anekBangla.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
