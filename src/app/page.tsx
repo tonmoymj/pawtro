@@ -1225,10 +1225,6 @@ export default function PawtroHome() {
           </svg>
           <div className="hwrap">
             <div>
-              <span className="eyebrow">
-                <i />
-                রাজশাহী ও আশপাশের এলাকা
-              </span>
               <h1>
                 পোষ্য হারিয়ে গেলে <em>খোঁজা</em> শুরু হোক এক জায়গা থেকে
               </h1>
