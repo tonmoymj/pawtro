@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/context/AuthContext";
+import Footer from "@/components/Footer";
 
 export default function RootLayout({
   children,
@@ -67,6 +68,7 @@ export default function RootLayout({
         )}
         <AuthProvider>
           {children}
+          <Footer />
         </AuthProvider>
       </body>
     </html>
