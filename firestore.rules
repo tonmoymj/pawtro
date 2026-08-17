@@ -4,25 +4,35 @@ service cloud.firestore {
 
     function signedIn()   { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
-    function isAdmin()    { return signedIn() && request.auth.token.admin == true; }
+
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
 
     match /users/{uid} {
       allow read:   if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid) &&
-                    request.resource.data.role == resource.data.role;
+      allow update: if isAdmin()
+                    || (isOwner(uid) && request.resource.data.role == resource.data.role);
       allow delete: if isOwner(uid) || isAdmin();
+
+      // ✅ In-app notifications subcollection
+      match /notifications/{id} {
+        allow read, update, delete: if isOwner(uid) || isAdmin();
+        allow create: if signedIn();
+      }
     }
 
     match /pets/{petId} {
       allow read: if resource.data.isApproved == true
                   || isOwner(resource.data.userId) || isAdmin();
       allow create: if isOwner(request.resource.data.userId)
-                    && request.resource.data.isApproved == false;
-      allow update: if (isOwner(resource.data.userId)
+                    && (request.resource.data.isApproved == false || isAdmin());
+      allow update: if isAdmin()
+                    || (isOwner(resource.data.userId)
                         && request.resource.data.userId == resource.data.userId
-                        && request.resource.data.isApproved == resource.data.isApproved)
-                    || isAdmin();
+                        && request.resource.data.isApproved == resource.data.isApproved);
       allow delete: if isOwner(resource.data.userId) || isAdmin();
 
       match /comments/{id} {
@@ -54,15 +64,22 @@ service cloud.firestore {
 
     match /organizations/{id} {
       allow read: if resource.data.verified == true || isAdmin();
-      allow create: if isOwner(request.resource.data.userId)
-                    && request.resource.data.verified == false;
+      allow create: if isAdmin()
+                    || (isOwner(request.resource.data.userId)
+                        && request.resource.data.verified == false);
       allow update: if isAdmin()
                     || (isOwner(resource.data.userId)
                         && request.resource.data.verified == resource.data.verified);
+      allow delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
     match /clinics/{id}  { allow read: if true; allow write: if isAdmin(); }
     match /stories/{id}  { allow read: if true; allow create: if signedIn(); }
     match /matches/{id}  { allow read: if signedIn(); allow write: if false; }
+
+    match /broadcasts/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
   }
 }

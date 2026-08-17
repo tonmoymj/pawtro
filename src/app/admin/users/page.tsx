@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { UserProfile } from '@/types';
@@ -17,6 +17,8 @@ import {
   Users,
   Award,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,8 +34,23 @@ export default function AdminUsersPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   useEffect(() => {
-    if (!loading) fetchUsers();
+    if (loading) return;
+
+    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+      setFetching(false);
+    }, (err) => {
+      console.error(err);
+      setFetching(false);
+    });
+
+    return () => unsubscribe();
   }, [loading]);
 
   useEffect(() => {
@@ -54,18 +71,11 @@ export default function AdminUsersPage() {
       }
     }
     setFiltered(res);
+    setCurrentPage(1);
   }, [users, search, roleFilter]);
 
-  const fetchUsers = async () => {
-    try {
-      const snap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc')));
-      setUsers(snap.docs.map(d => ({ ...d.data() } as UserProfile)));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setFetching(false);
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedUsers = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -226,7 +236,7 @@ export default function AdminUsersPage() {
                   <td colSpan={6} className="text-center py-12 text-[#8A948F]">কোনো ইউজার পাওয়া যায়নি।</td>
                 </tr>
               ) : (
-                filtered.map((u) => (
+                paginatedUsers.map((u) => (
                   <tr key={u.uid} className="border-b border-[#F1F3F1] last:border-0 hover:bg-[#FCFDFC] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -307,6 +317,54 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {filtered.length > 0 && (
+          <div className="px-4 py-3 bg-[#F7F8F7] border-t border-[#E1E5E2] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#4F5A55]">
+            <div className="flex items-center gap-2">
+              <span>প্রতি পেজে:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-[#E1E5E2] rounded px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value={10}>১০</option>
+                <option value={25}>২৫</option>
+                <option value={50}>৫০</option>
+              </select>
+              <span>
+                (দেখানো হচ্ছে {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filtered.length)} / মোট {filtered.length} জন)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded bg-white border border-[#E1E5E2] hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="পূর্ববর্তী পৃষ্ঠা"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="px-2 font-medium">
+                পৃষ্ঠা {currentPage} / {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="p-1.5 rounded bg-white border border-[#E1E5E2] hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="পরবর্তী পৃষ্ঠা"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

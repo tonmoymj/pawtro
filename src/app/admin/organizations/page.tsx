@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck, ShieldX, ShieldAlert, Loader2, Search, Plus, Trash2, X } from 'lucide-react';
@@ -28,15 +28,18 @@ export default function AdminOrganizationsPage() {
   const [form, setForm] = useState({ name: '', area: '', description: '', phone: '' });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (!loading) fetchOrgs(); }, [loading]);
-
-  const fetchOrgs = async () => {
-    try {
-      const snap = await getDocs(query(collection(db, 'organizations'), orderBy('verified', 'desc')));
+  useEffect(() => {
+    if (loading) return;
+    const q = query(collection(db, 'organizations'), orderBy('verified', 'desc'));
+    const unsubscribe = onSnapshot(q, (snap) => {
       setOrgs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Org)));
-    } catch (err) { console.error(err); }
-    finally { setFetching(false); }
-  };
+      setFetching(false);
+    }, (err) => {
+      console.error(err);
+      setFetching(false);
+    });
+    return () => unsubscribe();
+  }, [loading]);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 

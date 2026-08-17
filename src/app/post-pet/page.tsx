@@ -112,7 +112,7 @@ function PostPetForm() {
         eventDate,
         contactPhone: contactPhone.trim() || profile?.phone || '',
         status: 'active',
-        isApproved: true,
+        isApproved: false,
         images: [] as { path: string; url: string }[],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

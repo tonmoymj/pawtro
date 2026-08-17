@@ -22,6 +22,7 @@ export default function AdoptionPage() {
     try {
       const q = query(
         collection(db, 'pets'),
+        where('isApproved', '==', true),
         where('type', '==', 'adoption'),
         orderBy('createdAt', 'desc')
       );
@@ -31,7 +32,11 @@ export default function AdoptionPage() {
       console.warn('Adoption fetch fallback', err);
       // Fallback query without orderBy index requirement if index not yet built
       try {
-        const fallbackQ = query(collection(db, 'pets'), where('type', '==', 'adoption'));
+        const fallbackQ = query(
+          collection(db, 'pets'),
+          where('isApproved', '==', true),
+          where('type', '==', 'adoption')
+        );
         const fallbackSnap = await getDocs(fallbackQ);
         setPets(fallbackSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Pet)));
       } catch {}

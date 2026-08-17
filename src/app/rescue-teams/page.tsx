@@ -27,7 +27,8 @@ export default function RescueTeamsPage() {
   const fetchTeams = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'organizations'));
+      const q = query(collection(db, 'organizations'), where('verified', '==', true));
+      const snap = await getDocs(q);
       setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() } as Org)));
     } catch (err) {
       console.warn('Organizations fetch notice', err);

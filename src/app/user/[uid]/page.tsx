@@ -53,10 +53,24 @@ export default function PublicProfilePage({ params }: { params: Promise<{ uid: s
         });
       }
 
-      // 2. Fetch User's Posts
-      const petsQuery = query(collection(db, 'pets'), where('userId', '==', uid));
-      const petSnaps = await getDocs(petsQuery);
-      setUserPets(petSnaps.docs.map(d => ({ id: d.id, ...d.data() } as Pet)));
+      // 2. Fetch User's Posts (Approved only for public view)
+      try {
+        const petsQuery = query(
+          collection(db, 'pets'),
+          where('userId', '==', uid),
+          where('isApproved', '==', true)
+        );
+        const petSnaps = await getDocs(petsQuery);
+        setUserPets(petSnaps.docs.map(d => ({ id: d.id, ...d.data() } as Pet)));
+      } catch {
+        const fallbackQ = query(collection(db, 'pets'), where('userId', '==', uid));
+        const petSnaps = await getDocs(fallbackQ);
+        setUserPets(
+          petSnaps.docs
+            .map(d => ({ id: d.id, ...d.data() } as Pet))
+            .filter(p => p.isApproved)
+        );
+      }
     } catch (err) {
       console.warn('Profile fetch fallback', err);
     } finally {

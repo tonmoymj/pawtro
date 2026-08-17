@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import StatCard from '@/components/admin/StatCard';
@@ -38,6 +38,8 @@ interface AdminStats {
   recentUsers: any[];
 }
 
+const DIVISIONS_LIST = ['ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
+
 export default function AdminOverviewPage() {
   const { user, profile, loading } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -51,51 +53,60 @@ export default function AdminOverviewPage() {
 
   const fetchStats = async () => {
     try {
-      const [petsSnap, usersSnap, recentPetsSnap, recentUsersSnap] = await Promise.all([
-        getDocs(collection(db, 'pets')),
-        getDocs(collection(db, 'users')),
+      const [
+        totalPetsCount,
+        totalUsersCount,
+        lostPetsCount,
+        foundPetsCount,
+        adoptionPetsCount,
+        pendingApprovalCount,
+        reportedPostsCount,
+        resolvedPetsCount,
+        recentPetsSnap,
+        recentUsersSnap,
+        ...divCountsSnaps
+      ] = await Promise.all([
+        getCountFromServer(collection(db, 'pets')),
+        getCountFromServer(collection(db, 'users')),
+        getCountFromServer(query(collection(db, 'pets'), where('type', '==', 'lost'))),
+        getCountFromServer(query(collection(db, 'pets'), where('type', '==', 'found'))),
+        getCountFromServer(query(collection(db, 'pets'), where('type', '==', 'adoption'))),
+        getCountFromServer(query(collection(db, 'pets'), where('isApproved', '==', false))),
+        getCountFromServer(query(collection(db, 'pets'), where('reportCount', '>', 0))),
+        getCountFromServer(query(collection(db, 'pets'), where('status', '==', 'resolved'))),
         getDocs(query(collection(db, 'pets'), orderBy('createdAt', 'desc'), limit(8))),
         getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(5))),
+        ...DIVISIONS_LIST.map((div) =>
+          getCountFromServer(query(collection(db, 'pets'), where('division', '==', div)))
+        ),
       ]);
 
-      const pets = petsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-      const recentPets = recentPetsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const recentUsers = recentUsersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      const resolved = pets.filter(p => p.status === 'resolved').length;
-      const total = pets.length;
+      const total = totalPetsCount.data().count;
+      const resolved = resolvedPetsCount.data().count;
       const successRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
       const divCounts: Record<string, number> = {};
-      pets.forEach(p => {
-        const div = p.division || 'অন্যান্য';
-        divCounts[div] = (divCounts[div] || 0) + 1;
+      DIVISIONS_LIST.forEach((div, idx) => {
+        const count = divCountsSnaps[idx]?.data()?.count || 0;
+        divCounts[div] = count;
       });
 
       setStats({
         totalPets: total,
-        totalUsers: usersSnap.size,
-        lostPets: pets.filter(p => p.type === 'lost').length,
-        foundPets: pets.filter(p => p.type === 'found').length,
-        adoptionPets: pets.filter(p => p.type === 'adoption').length,
-        pendingApproval: pets.filter(p => !p.isApproved).length,
-        reportedPosts: pets.filter(p => (p.reportCount || 0) > 0).length,
+        totalUsers: totalUsersCount.data().count,
+        lostPets: lostPetsCount.data().count,
+        foundPets: foundPetsCount.data().count,
+        adoptionPets: adoptionPetsCount.data().count,
+        pendingApproval: pendingApprovalCount.data().count,
+        reportedPosts: reportedPostsCount.data().count,
         resolvedPets: resolved,
         successRate,
         divisionCounts: divCounts,
-        recentPets,
-        recentUsers,
+        recentPets: recentPetsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        recentUsers: recentUsersSnap.docs.map((d) => ({ uid: d.id, ...d.data() })),
       });
     } catch (err) {
       console.error('Admin stats error:', err);
-      // Demo stats fallback
-      setStats({
-        totalPets: 12, totalUsers: 47, lostPets: 7, foundPets: 3,
-        adoptionPets: 2, pendingApproval: 3, reportedPosts: 1,
-        resolvedPets: 5, successRate: 42,
-        divisionCounts: { 'ঢাকা': 6, 'চট্টগ্রাম': 3, 'রাজশাহী': 2, 'সিলেট': 1 },
-        recentPets: [], recentUsers: [],
-      });
     } finally {
       setFetching(false);
     }

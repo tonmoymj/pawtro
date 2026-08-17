@@ -116,13 +116,19 @@ export default function DashboardPage() {
 
   const fetchVolunteerFeed = async () => {
     try {
-      const q = query(collection(db, 'pets'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'pets'), where('isApproved', '==', true), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       const allPets = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pet));
-      // Show emergency or found or active cases
-      setVolunteerPets(allPets.filter(p => p.status !== 'resolved' || p.rescueClaim?.volunteerId === user?.uid));
+      // Show emergency or found or active cases that are approved
+      setVolunteerPets(allPets.filter(p => p.isApproved && (p.status !== 'resolved' || p.rescueClaim?.volunteerId === user?.uid)));
     } catch (err) {
       console.warn('Volunteer feed fallback', err);
+      try {
+        const fallbackQ = query(collection(db, 'pets'), where('isApproved', '==', true));
+        const snap = await getDocs(fallbackQ);
+        const allPets = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pet));
+        setVolunteerPets(allPets.filter(p => p.isApproved && (p.status !== 'resolved' || p.rescueClaim?.volunteerId === user?.uid)));
+      } catch {}
     }
   };
 

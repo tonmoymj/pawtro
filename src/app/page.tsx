@@ -247,6 +247,7 @@ export default function PawtroHome() {
   const [readNotifs, setReadNotifs] = useState<number[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [postModalType, setPostModalType] = useState<'lost' | 'found' | 'adoption'>('lost');
+  const [initialLoad, setInitialLoad] = useState(true);
 
   // Real-time live Firestore data listener
   useEffect(() => {
@@ -282,8 +283,10 @@ export default function PawtroHome() {
         } else {
           setData([]);
         }
+        setInitialLoad(false);
       }, (err) => {
         console.warn('Live pets snapshot fallback:', err);
+        setInitialLoad(false);
       });
       return () => unsub();
     } catch (e) {
@@ -1519,7 +1522,22 @@ export default function PawtroHome() {
               </div>
             </div>
             <div className="feed" id="feed">
-              {visiblePets.length ? (
+              {initialLoad ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <article key={`skel-${i}`} className="card" style={{ opacity: 1 - i * 0.15, pointerEvents: 'none' }}>
+                    <div className="thumb" style={{ background: 'var(--surface-2)' }}></div>
+                    <div className="cbody" style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
+                      <div style={{ height: '18px', background: 'var(--surface-2)', width: '60%', borderRadius: '4px' }}></div>
+                      <div style={{ height: '14px', background: 'var(--surface-2)', width: '40%', borderRadius: '4px' }}></div>
+                      <div style={{ height: '14px', background: 'var(--surface-2)', width: '80%', borderRadius: '4px', marginTop: '6px' }}></div>
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                        <div style={{ height: '22px', background: 'var(--surface-2)', width: '40px', borderRadius: '4px' }}></div>
+                        <div style={{ height: '22px', background: 'var(--surface-2)', width: '60px', borderRadius: '4px' }}></div>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : visiblePets.length ? (
                 visiblePets.map((p) => {
                   const t = TYPE_CONFIG[p.type];
                   const ms = getMatchesFor(p);
