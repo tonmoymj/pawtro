@@ -38,11 +38,26 @@ interface AdminStats {
   recentUsers: any[];
 }
 
+const DEFAULT_STATS: AdminStats = {
+  totalPets: 0,
+  totalUsers: 0,
+  lostPets: 0,
+  foundPets: 0,
+  adoptionPets: 0,
+  pendingApproval: 0,
+  reportedPosts: 0,
+  resolvedPets: 0,
+  successRate: 0,
+  divisionCounts: {},
+  recentPets: [],
+  recentUsers: [],
+};
+
 const DIVISIONS_LIST = ['ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
 
 export default function AdminOverviewPage() {
   const { user, profile, loading } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [stats, setStats] = useState<AdminStats>(DEFAULT_STATS);
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
@@ -53,19 +68,7 @@ export default function AdminOverviewPage() {
 
   const fetchStats = async () => {
     try {
-      const [
-        totalPetsCount,
-        totalUsersCount,
-        lostPetsCount,
-        foundPetsCount,
-        adoptionPetsCount,
-        pendingApprovalCount,
-        reportedPostsCount,
-        resolvedPetsCount,
-        recentPetsSnap,
-        recentUsersSnap,
-        ...divCountsSnaps
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         getCountFromServer(collection(db, 'pets')),
         getCountFromServer(collection(db, 'users')),
         getCountFromServer(query(collection(db, 'pets'), where('type', '==', 'lost'))),
@@ -81,29 +84,47 @@ export default function AdminOverviewPage() {
         ),
       ]);
 
-      const total = totalPetsCount.data().count;
-      const resolved = resolvedPetsCount.data().count;
+      const getCount = (idx: number) => {
+        const res = results[idx];
+        if (res.status === 'fulfilled' && res.value && 'data' in res.value && typeof (res.value as any).data === 'function') {
+          return (res.value as any).data().count || 0;
+        }
+        return 0;
+      };
+
+      const getDocsData = (idx: number): any[] => {
+        const res = results[idx];
+        if (res.status === 'fulfilled' && res.value && 'docs' in res.value) {
+          return (res.value as any).docs || [];
+        }
+        return [];
+      };
+
+      const total = getCount(0);
+      const resolved = getCount(7);
       const successRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
 
       const divCounts: Record<string, number> = {};
       DIVISIONS_LIST.forEach((div, idx) => {
-        const count = divCountsSnaps[idx]?.data()?.count || 0;
-        divCounts[div] = count;
+        divCounts[div] = getCount(10 + idx);
       });
+
+      const recentPetsDocs = getDocsData(8);
+      const recentUsersDocs = getDocsData(9);
 
       setStats({
         totalPets: total,
-        totalUsers: totalUsersCount.data().count,
-        lostPets: lostPetsCount.data().count,
-        foundPets: foundPetsCount.data().count,
-        adoptionPets: adoptionPetsCount.data().count,
-        pendingApproval: pendingApprovalCount.data().count,
-        reportedPosts: reportedPostsCount.data().count,
+        totalUsers: getCount(1),
+        lostPets: getCount(2),
+        foundPets: getCount(3),
+        adoptionPets: getCount(4),
+        pendingApproval: getCount(5),
+        reportedPosts: getCount(6),
         resolvedPets: resolved,
         successRate,
         divisionCounts: divCounts,
-        recentPets: recentPetsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        recentUsers: recentUsersSnap.docs.map((d) => ({ uid: d.id, ...d.data() })),
+        recentPets: recentPetsDocs.map((d: any) => ({ id: d.id, ...d.data() })),
+        recentUsers: recentUsersDocs.map((d: any) => ({ uid: d.id, ...d.data() })),
       });
     } catch (err) {
       console.error('Admin stats error:', err);
@@ -136,7 +157,7 @@ export default function AdminOverviewPage() {
     );
   }
 
-  const s = stats!;
+  const s = stats;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
