@@ -35,9 +35,15 @@ export default function AdminPostsPage() {
 
   useEffect(() => {
     if (loading) return;
-    const q = query(collection(db, 'pets'), orderBy('createdAt', 'desc'));
+    const q = collection(db, 'pets');
     const unsubscribe = onSnapshot(q, (snap) => {
-      setPets(snap.docs.map(d => ({ id: d.id, ...d.data() } as Pet)));
+      const allPets = snap.docs.map(d => ({ id: d.id, ...d.data() } as Pet));
+      allPets.sort((a: any, b: any) => {
+        const tA = a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+        const tB = b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0));
+        return tB - tA;
+      });
+      setPets(allPets);
       setFetching(false);
     }, (err) => {
       console.error(err);

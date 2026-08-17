@@ -41,9 +41,15 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (loading) return;
 
-    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const q = collection(db, 'users');
     const unsubscribe = onSnapshot(q, (snap) => {
-      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile)));
+      const allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
+      allUsers.sort((a: any, b: any) => {
+        const tA = a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+        const tB = b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0));
+        return tB - tA;
+      });
+      setUsers(allUsers);
       setFetching(false);
     }, (err) => {
       console.error(err);
