@@ -23,7 +23,14 @@ import {
   CheckCircle,
   AlertTriangle,
   Award,
-  MessageCircle
+  MessageCircle,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Clock,
+  Info
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
@@ -41,6 +48,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [ownerProfile, setOwnerProfile] = useState<UserProfile | null>(null);
+
+  // Gallery state
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchPetDetails();
@@ -187,6 +198,33 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     }
   };
 
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('লিংক কপি হয়নি, ম্যানুয়ালি কপি করুন।');
+    }
+  };
+
+  const shareOnFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+  };
+
+  const shareOnWhatsApp = () => {
+    const text = encodeURIComponent(`Pawtro-তে একটি পোস্ট দেখুন: ${pet?.petName ? `"${pet.petName}" — ` : ''}${window.location.href}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  // Gallery navigation
+  const images = pet?.images ?? [];
+  const hasMultipleImages = images.length > 1;
+
+  const prevImage = () => setActiveImageIndex((i) => (i === 0 ? images.length - 1 : i - 1));
+  const nextImage = () => setActiveImageIndex((i) => (i === images.length - 1 ? 0 : i + 1));
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -227,6 +265,13 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
     ownerProfile.socialLinks.whatsapp
   );
 
+  // Sex display
+  const sexDisplay = pet.sex === 'male' ? 'পুরুষ ♂' : pet.sex === 'female' ? 'স্ত্রী ♀' : 'অজানা';
+
+  // Current image
+  const currentImageUrl = images[activeImageIndex]?.url 
+    || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop&q=80';
+
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8">
       {/* Missing Poster Modal */}
@@ -247,40 +292,105 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
         <span>ফিডে ফিরে যান</span>
       </Link>
 
+      {/* Pending Approval Banner (only visible to owner if not yet approved) */}
+      {isOwner && !pet.isApproved && pet.status !== 'resolved' && (
+        <div className="mb-5 p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold text-amber-900 text-sm">পোস্টটি পর্যালোচনায় আছে ⏳</h4>
+            <p className="text-xs text-amber-800 mt-0.5">
+              আপনার পোস্টটি এখন অ্যাডমিন পর্যালোচনায় আছে। অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। সাধারণত কয়েক ঘণ্টার মধ্যে অনুমোদন হয়।
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Gallery & Details */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
-            <div className="relative aspect-video bg-stone-100">
-              <img
-                src={pet.images?.[0]?.url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop&q=80'}
-                alt={pet.petName || 'Pet'}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${badgeClass}`}>
-                  {badgeLabel}
-                </span>
-                {pet.status === 'resolved' && (
-                  <span className="bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>পোষ্য ঘরে ফিরেছে (Resolved)</span>
-                  </span>
+            
+            {/* ─── Image Gallery ─── */}
+            <div className="relative bg-stone-100">
+              {/* Main Image */}
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  key={activeImageIndex}
+                  src={currentImageUrl}
+                  alt={pet.petName || 'Pet'}
+                  className="w-full h-full object-cover transition-opacity duration-300"
+                />
+
+                {/* Navigation arrows (only if multiple images) */}
+                {hasMultipleImages && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-all"
+                      aria-label="আগের ছবি"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-all"
+                      aria-label="পরের ছবি"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    {/* Image counter */}
+                    <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                      {activeImageIndex + 1} / {images.length}
+                    </div>
+                  </>
                 )}
-                {pet.isEmergency && (
-                  <span className="bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>জরুরি রেসকিউ প্রয়োজন</span>
+
+                {/* Status Badges */}
+                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${badgeClass}`}>
+                    {badgeLabel}
                   </span>
-                )}
+                  {pet.status === 'resolved' && (
+                    <span className="bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>পোষ্য ঘরে ফিরেছে</span>
+                    </span>
+                  )}
+                  {pet.isEmergency && (
+                    <span className="bg-red-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm flex items-center gap-1 animate-pulse">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>জরুরি রেসকিউ প্রয়োজন</span>
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Thumbnail Strip (only if multiple images) */}
+              {hasMultipleImages && (
+                <div className="flex gap-2 p-3 bg-stone-50 border-t border-stone-200 overflow-x-auto">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImageIndex(i)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                        i === activeImageIndex
+                          ? 'border-amber-500 shadow-md scale-105'
+                          : 'border-stone-200 hover:border-amber-300 opacity-70 hover:opacity-100'
+                      }`}
+                      aria-label={`ছবি ${i + 1}`}
+                    >
+                      <img src={img.url} alt={`ছবি ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="p-6 sm:p-8 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-black text-stone-900">
-                    {pet.petName || (pet.species === 'cat' ? 'অচেনা বিড়াল' : 'অচেনা কুকুর')}
+                    {pet.petName || (pet.species === 'cat' ? 'অচেনা বিড়াল' : pet.species === 'dog' ? 'অচেনা কুকুর' : 'অচেনা প্রাণী')}
                   </h1>
                   <div className="flex items-center gap-1.5 text-stone-500 text-sm mt-1">
                     <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
@@ -289,6 +399,16 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Owner: Edit button */}
+                  {isOwner && (
+                    <Link
+                      href={`/post-pet?edit=${petId}`}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-bold border border-stone-200 transition-colors shadow-sm"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-stone-500" />
+                      <span>সম্পাদনা</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => setShowPosterModal(true)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200 transition-colors shadow-sm"
@@ -319,11 +439,13 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 </div>
               )}
 
-              {/* Data Table */}
+              {/* ─── Data Table ─── */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs sm:text-sm">
                 <div>
                   <span className="text-stone-400 text-[11px] font-semibold uppercase block">প্রজাতি</span>
-                  <span className="font-bold text-stone-900">{pet.species === 'cat' ? 'বিড়াল' : pet.species === 'dog' ? 'কুকুর' : 'অন্যান্য'}</span>
+                  <span className="font-bold text-stone-900">
+                    {pet.species === 'cat' ? '🐱 বিড়াল' : pet.species === 'dog' ? '🐶 কুকুর' : pet.species === 'bird' ? '🦜 পাখি' : '🐾 অন্যান্য'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-stone-400 text-[11px] font-semibold uppercase block">জাত / ব্রিড</span>
@@ -331,7 +453,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                 </div>
                 <div>
                   <span className="text-stone-400 text-[11px] font-semibold uppercase block">লিঙ্গ</span>
-                  <span className="font-bold text-stone-900">{pet.sex === 'male' ? 'পুরুষ' : 'স্ত্রী'}</span>
+                  <span className="font-bold text-stone-900">{sexDisplay}</span>
                 </div>
                 <div>
                   <span className="text-stone-400 text-[11px] font-semibold uppercase block">বয়স</span>
@@ -403,7 +525,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                   type="text"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="আপনি কি একে কোথাও দেখেছেন? তথ্য ও এলাকা উল্লেখ করুন..."
+                  placeholder="একে কোথাও দেখেছেন? এলাকা ও বিবরণ জানান..."
                   className="flex-1 px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
                 <button
@@ -424,7 +546,11 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
             <div className="space-y-3 pt-2">
               {comments.length === 0 && (
-                <p className="text-center text-stone-400 text-sm py-4">এখনো কোনো মন্তব্য নেই। প্রথম সাইটিং আপডেট দিন!</p>
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-2">💬</div>
+                  <p className="text-stone-400 text-sm font-medium">এখনো কোনো মন্তব্য নেই</p>
+                  <p className="text-stone-400 text-xs mt-1">প্রথম সাইটিং বা তথ্য জানান!</p>
+                </div>
               )}
               {comments.map((c) => (
                 <div key={c.id} className="p-4 bg-stone-50/80 rounded-2xl border border-stone-200 space-y-1.5">
@@ -451,7 +577,7 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
-        {/* Right Column: Contact & QR */}
+        {/* Right Column: Contact & Share & QR */}
         <div className="space-y-5">
           {/* Contact Card */}
           <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm space-y-3">
@@ -527,6 +653,57 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
               <Printer className="w-4 h-4 text-amber-700" />
               <span>প্রিন্টএবল মিসিং পোস্টার দেখুন</span>
             </button>
+          </div>
+
+          {/* ─── Social Share Card ─── */}
+          <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm space-y-3">
+            <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-amber-600" />
+              পোস্টটি শেয়ার করুন
+            </h3>
+            <p className="text-xs text-stone-500">বেশি মানুষের কাছে পৌঁছালে দ্রুত সাহায্য পাওয়া যাবে।</p>
+
+            <div className="space-y-2">
+              {/* Facebook Share */}
+              <button
+                onClick={shareOnFacebook}
+                className="w-full py-2.5 px-4 bg-[#1877F2] hover:bg-[#0d65e0] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+              >
+                <span>📘</span>
+                <span>Facebook-এ শেয়ার করুন</span>
+              </button>
+
+              {/* WhatsApp Share */}
+              <button
+                onClick={shareOnWhatsApp}
+                className="w-full py-2.5 px-4 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+              >
+                <span>💬</span>
+                <span>WhatsApp-এ শেয়ার করুন</span>
+              </button>
+
+              {/* Copy Link */}
+              <button
+                onClick={copyLink}
+                className={`w-full py-2.5 px-4 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 transition-all border ${
+                  copied
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                    : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>লিংক কপি হয়েছে!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>লিংক কপি করুন</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* QR Code */}

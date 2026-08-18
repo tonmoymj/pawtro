@@ -11,15 +11,15 @@ import { getGeohash } from '@/lib/geo';
 import Navbar from '@/components/Navbar';
 import { 
   Upload, 
-  MapPin, 
-  PawPrint, 
-  Calendar, 
-  Phone, 
   Loader2, 
   AlertCircle, 
-  CheckCircle2,
   ArrowLeft,
-  X
+  X,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 
 const DIVISIONS = ['ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
@@ -61,6 +61,8 @@ function PostPetForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [successPostId, setSuccessPostId] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -135,15 +137,23 @@ function PostPetForm() {
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push(`/pet/${docRef.id}`);
-      }, 1500);
+      setSuccessPostId(docRef.id);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'পোস্ট প্রকাশে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyLink = async () => {
+    if (!successPostId) return;
+    const url = `${window.location.origin}/pet/${successPostId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
   };
 
   return (
@@ -187,12 +197,64 @@ function PostPetForm() {
           </div>
         )}
 
-        {success && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-            <span>পোস্ট সফলভাবে সম্পন্ন হয়েছে! পেজে নিয়ে যাওয়া হচ্ছে...</span>
+        {/* SUCCESS CARD */}
+        {success && successPostId ? (
+          <div className="flex flex-col items-center text-center py-4">
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-5">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+            </div>
+            <h2 className="text-2xl font-black text-stone-900 mb-1">পোস্ট সফলভাবে প্রকাশিত!</h2>
+            <p className="text-stone-500 text-sm mb-6">সম্প্রদায়কে সাহায্য করার জন্য ধন্যবাদ 🐾</p>
+
+            <div className="w-full max-w-md p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-left mb-6">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-amber-900 text-sm">পর্যালোচনায় আছে ⏳</h4>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  আপনার পোস্টটি অ্যাডমিন অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। সাধারণত কয়েক ঘণ্টার মধ্যে অনুমোদন হয়।
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full max-w-md space-y-2.5">
+              <p className="text-xs font-bold text-stone-400 uppercase tracking-wider text-left mb-2">এখনই শেয়ার করুন</p>
+              <button
+                onClick={() => { const url = encodeURIComponent(`${window.location.origin}/pet/${successPostId}`); window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400'); }}
+                className="w-full py-3 px-4 bg-[#1877F2] hover:bg-[#0d65e0] text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+              >
+                <span>📘 Facebook-এ শেয়ার করুন</span>
+              </button>
+              <button
+                onClick={() => { const url = `${window.location.origin}/pet/${successPostId}`; window.open(`https://wa.me/?text=${encodeURIComponent(`Pawtro-তে একটি পোস্ট দেখুন: ${url}`)}`, '_blank'); }}
+                className="w-full py-3 px-4 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
+              >
+                <span>💬 WhatsApp-এ শেয়ার করুন</span>
+              </button>
+              <button
+                onClick={copyLink}
+                className={`w-full py-3 px-4 font-bold rounded-2xl text-sm flex items-center justify-center gap-2 transition-all border ${
+                  copied ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-stone-50 hover:bg-stone-100 border-stone-200 text-stone-700'
+                }`}
+              >
+                {copied ? <><Check className="w-4 h-4" /><span>লিংক কপি হয়েছে!</span></> : <><Copy className="w-4 h-4" /><span>পোস্টের লিংক কপি করুন</span></>}
+              </button>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => router.push(`/pet/${successPostId}`)}
+                  className="py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>পোস্ট দেখুন</span>
+                </button>
+                <Link href="/"
+                  className="py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-2xl text-sm flex items-center justify-center gap-1.5 transition-all"
+                >
+                  ফিডে ফিরুন
+                </Link>
+              </div>
+            </div>
           </div>
-        )}
+        ) : (
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Post Type Selector */}
@@ -278,8 +340,19 @@ function PostPetForm() {
             </div>
           </div>
 
-          {/* Colors & Special Marks */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Age & Colors & Special Marks */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-stone-700 mb-1.5">বয়স</label>
+              <input
+                type="text"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="যেমন: ৬ মাস / ২ বছর"
+                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-bold text-stone-700 mb-1.5">রং (কমা দিয়ে আলাদা করুন)</label>
               <input
@@ -417,6 +490,7 @@ function PostPetForm() {
             )}
           </button>
         </form>
+        )}
       </div>
     </div>
   );
