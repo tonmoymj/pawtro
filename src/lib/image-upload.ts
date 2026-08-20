@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
 /**
@@ -46,13 +46,20 @@ export async function uploadPetImage(
   userId: string,
   petId: string
 ): Promise<{ path: string; url: string }> {
-  const blob = await shrinkImage(file);
+  let uploadData: Blob | File = file;
+  try {
+    uploadData = await shrinkImage(file);
+  } catch (err) {
+    console.warn('Image shrink fallback to original file:', err);
+    uploadData = file;
+  }
+
   const randomSuffix = Math.random().toString(36).substring(2, 9);
   const filePath = `pets/${userId}/${petId}/${Date.now()}_${randomSuffix}.jpg`;
   const storageRef = ref(storage, filePath);
   
-  await uploadBytes(storageRef, blob, {
-    contentType: 'image/jpeg',
+  await uploadBytes(storageRef, uploadData, {
+    contentType: file.type || 'image/jpeg',
   });
   
   const downloadUrl = await getDownloadURL(storageRef);
@@ -60,4 +67,17 @@ export async function uploadPetImage(
     path: filePath,
     url: downloadUrl,
   };
+}
+
+/**
+ * Deletes an image from Firebase Storage
+ */
+export async function deletePetImage(filePath: string): Promise<void> {
+  if (!filePath) return;
+  try {
+    const storageRef = ref(storage, filePath);
+    await deleteObject(storageRef);
+  } catch (err) {
+    console.warn('Delete pet image notice:', err);
+  }
 }

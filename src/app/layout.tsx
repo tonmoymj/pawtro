@@ -60,6 +60,10 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <Script
+          src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+          strategy="beforeInteractive"
+        />
         {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
           <Script
             src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}

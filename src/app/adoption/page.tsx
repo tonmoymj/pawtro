@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { Pet } from '@/types';
 import PetCard from '@/components/PetCard';
 import Navbar from '@/components/Navbar';
+import BackButton from '@/components/BackButton';
 import { HeartHandshake, Sparkles, Loader2, Heart, Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,7 +50,12 @@ export default function AdoptionPage() {
     <div className="min-h-screen bg-[#F7F8F7]">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Top Back Navigation */}
+        <div className="mb-6">
+          <BackButton fallbackUrl="/" label="প্রধান ফিডে ফিরে যান" />
+        </div>
+
         {/* Hero Banner */}
         <div className="bg-gradient-to-r from-amber-600 to-amber-700 rounded-3xl p-8 sm:p-12 text-white shadow-xl mb-10">
           <div className="max-w-2xl space-y-4">

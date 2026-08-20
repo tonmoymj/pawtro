@@ -7,6 +7,8 @@ import { db } from '@/lib/firebase';
 import { Pet, AppNotification } from '@/types';
 import PetCard from '@/components/PetCard';
 import RoleBadge from '@/components/RoleBadge';
+import BackButton from '@/components/BackButton';
+import { deletePetImage } from '@/lib/image-upload';
 import Link from 'next/link';
 import { 
   User, 
@@ -26,7 +28,8 @@ import {
   Award,
   AlertTriangle,
   HeartHandshake,
-  CheckCircle
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 
 const DIVISIONS = ['ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
@@ -200,9 +203,17 @@ export default function DashboardPage() {
 
   const handleDeletePost = async (petId: string) => {
     if (!confirm('আপনি কি নিশ্চিত যে এই পোস্টটি চিরতরে মুছে ফেলতে চান?')) return;
+    const petToDelete = myPets.find((p) => p.id === petId);
     try {
       await deleteDoc(doc(db, 'pets', petId));
       setMyPets((prev) => prev.filter((p) => p.id !== petId));
+      if (petToDelete?.images) {
+        for (const img of petToDelete.images) {
+          if (typeof img === 'object' && (img as any)?.path) {
+            await deletePetImage((img as any).path);
+          }
+        }
+      }
     } catch (err) {
       console.error(err);
       alert('পোস্ট মুছতে সমস্যা হয়েছে।');
@@ -238,6 +249,10 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      {/* Top Back Navigation */}
+      <div className="mb-5">
+        <BackButton fallbackUrl="/" label="হোমে ফিরে যান" />
+      </div>
       
       {/* Profile Header Banner */}
       <div className="bg-white rounded-3xl p-5 sm:p-8 border border-stone-200 shadow-sm mb-6 sm:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -383,7 +398,14 @@ export default function DashboardPage() {
                 <div key={pet.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm flex flex-col justify-between">
                   <div className="p-4 flex gap-3.5 items-start">
                     <img
-                      src={pet.images?.[0]?.url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400'}
+                      src={
+                        (typeof pet.images?.[0] === 'string'
+                          ? pet.images[0]
+                          : pet.images?.[0]?.url) ||
+                        (pet.species === 'cat'
+                          ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400'
+                          : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400')
+                      }
                       alt={pet.petName || 'Pet'}
                       className="w-20 h-20 rounded-xl object-cover shrink-0 bg-stone-100"
                     />
@@ -394,9 +416,18 @@ export default function DashboardPage() {
                         }`}>
                           {pet.type === 'lost' ? 'হারিয়েছে' : pet.type === 'found' ? 'পাওয়া গেছে' : 'দত্তক'}
                         </span>
-                        {pet.status === 'resolved' && (
+                        {pet.status === 'resolved' ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-600 text-white rounded-full">
                             সমাধান হয়েছে
+                          </span>
+                        ) : !pet.isApproved ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-300 rounded-full flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            পর্যালোচনায় আছে (অনুমোদন বাকি)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                            লাইভ ফিডে অনুমোদিত ✅
                           </span>
                         )}
                       </div>
@@ -481,7 +512,14 @@ export default function DashboardPage() {
                 <div key={pet.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm flex flex-col justify-between">
                   <div className="p-4 flex gap-3.5 items-start">
                     <img
-                      src={pet.images?.[0]?.url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400'}
+                      src={
+                        (typeof pet.images?.[0] === 'string'
+                          ? pet.images[0]
+                          : pet.images?.[0]?.url) ||
+                        (pet.species === 'cat'
+                          ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400'
+                          : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400')
+                      }
                       alt={pet.petName || 'Pet'}
                       className="w-20 h-20 rounded-xl object-cover shrink-0 bg-stone-100"
                     />

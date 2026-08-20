@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import StatCard from '@/components/admin/StatCard';
 import RoleBadge from '@/components/RoleBadge';
+import BackButton from '@/components/BackButton';
 import Link from 'next/link';
 import {
   Users,
@@ -160,14 +161,17 @@ export default function AdminOverviewPage() {
   const s = stats;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#111614]">কমান্ড সেন্টার</h1>
-          <p className="text-[#8A948F] text-sm mt-0.5">Pawtro প্ল্যাটফর্মের পূর্ণাঙ্গ নিয়ন্ত্রণ ড্যাশবোর্ড</p>
+          <div className="mb-2">
+            <BackButton fallbackUrl="/" label="মূল ওয়েবসাইটে ফিরুন" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#111614]">কমান্ড সেন্টার</h1>
+          <p className="text-[#8A948F] text-xs sm:text-sm mt-0.5">Pawtro প্ল্যাটফর্মের পূর্ণাঙ্গ নিয়ন্ত্রণ ড্যাশবোর্ড</p>
         </div>
-        <div className="bg-[#F1F8F6] border border-[#C2DAD5] text-[#1D6B5F] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <div className="bg-[#F1F8F6] border border-[#C2DAD5] text-[#1D6B5F] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
           <span className="w-1.5 h-1.5 bg-[#1D6B5F] rounded-full animate-pulse"></span>
           লাইভ ডেটা
         </div>

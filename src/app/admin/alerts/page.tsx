@@ -13,6 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 
 const DIVISIONS = ['সব বিভাগ', 'ঢাকা', 'চট্টগ্রাম', 'রাজশাহী', 'খুলনা', 'বরিশাল', 'সিলেট', 'রংপুর', 'ময়মনসিংহ'];
 const ALERT_TYPES = [
@@ -94,8 +95,11 @@ export default function AdminAlertsPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-[#111614]">ব্রডকাস্ট ও ইমার্জেন্সি অ্যালার্ট</h1>
-        <p className="text-[#8A948F] text-sm mt-0.5">
+        <div className="mb-2">
+          <BackButton fallbackUrl="/admin" label="অ্যাডমিন কমান্ড সেন্টারে ফিরুন" />
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#111614]">ব্রডকাস্ট ও ইমার্জেন্সি অ্যালার্ট</h1>
+        <p className="text-[#8A948F] text-xs sm:text-sm mt-0.5">
           কমিউনিটিকে জরুরি তথ্য জানাতে ব্রডকাস্ট মেসেজ পাঠান
         </p>
       </div>

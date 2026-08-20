@@ -21,6 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { verifyRecaptcha } from '@/lib/recaptcha';
+import BackButton from '@/components/BackButton';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -213,7 +214,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-10">
+    <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md mb-4 flex items-center justify-start">
+        <BackButton fallbackUrl="/" label="হোমে ফিরে যান" />
+      </div>
+
       <div className="w-full max-w-md bg-white p-7 sm:p-9 rounded-3xl border border-stone-200 shadow-xl">
         
         {/* Top Header */}

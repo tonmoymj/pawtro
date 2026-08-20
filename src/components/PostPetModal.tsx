@@ -97,8 +97,18 @@ export default function PostPetModal({ isOpen, onClose, initialType = 'lost' }: 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files).slice(0, 3);
+      const isHeic = selectedFiles.some(f => f.name.toLowerCase().endsWith('.heic') || f.name.toLowerCase().endsWith('.heif'));
+      if (isHeic) {
+        setError('iPhone HEIC ছবির ক্ষেত্রে দয়া করে JPG বা PNG ফরম্যাটে কনভার্ট করে আপলোড করুন।');
+      } else {
+        setError('');
+      }
       setFiles(selectedFiles);
-      setPreviews(selectedFiles.map((file) => URL.createObjectURL(file)));
+      try {
+        setPreviews(selectedFiles.map((file) => URL.createObjectURL(file)));
+      } catch {
+        // Fallback
+      }
     }
   };
 
@@ -165,6 +175,22 @@ export default function PostPetModal({ isOpen, onClose, initialType = 'lost' }: 
         });
       }
 
+      // Add user notification for pending approval
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+          type: 'approval_pending',
+          fromUserId: 'system',
+          fromUserName: 'Pawtro মডারেশন',
+          petId: docRef.id,
+          petName: petData.petName || (petData.species === 'cat' ? 'বিড়াল' : petData.species === 'dog' ? 'কুকুর' : 'পোষ্য'),
+          message: `আপনার "${petData.petName || 'নতুন পোষ্যের'}" পোস্টটি সফলভাবে জমা হয়েছে। অ্যাডমিন পর্যালোচনার পর এটি নিউজফিডে প্রকাশিত হবে (অনুমোদনের অপেক্ষায় ⏳)।`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      } catch (notifErr) {
+        console.warn('Notification creation notice:', notifErr);
+      }
+
       setSuccess(true);
       setSuccessPostId(docRef.id);
     } catch (err: any) {
@@ -203,7 +229,7 @@ export default function PostPetModal({ isOpen, onClose, initialType = 'lost' }: 
               Pawtro Report
             </span>
             <h2 className="text-base sm:text-lg font-black text-stone-900">
-              {success ? 'পোস্ট সম্পন্ন হয়েছে!' : 'পোষ্য সংক্রান্ত তথ্য রিপোর্ট করুন'}
+              {success ? 'পোস্ট জমা হয়েছে!' : 'পোষ্য সংক্রান্ত তথ্য রিপোর্ট করুন'}
             </h2>
           </div>
           <button
@@ -223,16 +249,16 @@ export default function PostPetModal({ isOpen, onClose, initialType = 'lost' }: 
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
 
-            <h3 className="text-xl font-black text-stone-900 mb-1">পোস্ট সফলভাবে প্রকাশিত!</h3>
+            <h3 className="text-xl font-black text-stone-900 mb-1">পোস্ট সফলভাবে জমা হয়েছে!</h3>
             <p className="text-stone-600 text-sm mb-5">সম্প্রদায়কে সাহায্য করার জন্য ধন্যবাদ 🐾</p>
 
             {/* Pending approval notice */}
-            <div className="w-full p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-left mb-6">
+            <div className="w-full p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-start gap-3 text-left mb-6 shadow-xs">
               <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-amber-900 text-sm">পর্যালোচনায় আছে ⏳</h4>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  আপনার পোস্টটি অ্যাডমিন অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। সাধারণত কয়েক ঘণ্টার মধ্যে অনুমোদন হয়।
+                <h4 className="font-bold text-amber-900 text-sm">অ্যাডমিন অনুমোদনের অপেক্ষায় ⏳</h4>
+                <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                  আপনার পোস্টটি অ্যাডমিন অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। আপনার ড্যাশবোর্ড নোটিফিকেশনেও আপডেট জানিয়ে দেওয়া হবে।
                 </p>
               </div>
             </div>

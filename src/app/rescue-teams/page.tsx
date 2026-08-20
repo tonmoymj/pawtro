@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Navbar from '@/components/Navbar';
+import BackButton from '@/components/BackButton';
 import { ShieldCheck, Phone, MapPin, Loader2, HeartHandshake } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,7 +42,11 @@ export default function RescueTeamsPage() {
     <div className="min-h-screen bg-[#F7F8F7]">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        <div className="mb-6">
+          <BackButton fallbackUrl="/" label="প্রধান ফিডে ফিরে যান" />
+        </div>
+
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-black text-stone-900">ভেরিফায়েড রেসকিউ টিম ও শেল্টার</h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1">

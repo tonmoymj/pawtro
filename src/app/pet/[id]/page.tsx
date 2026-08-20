@@ -6,9 +6,10 @@ import { doc, getDoc, updateDoc, collection, addDoc, query, orderBy, getDocs, se
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Pet, Comment, UserProfile } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getWhatsAppUrl } from '@/lib/utils';
 import RoleBadge from '@/components/RoleBadge';
 import MissingPosterModal from '@/components/MissingPosterModal';
+import BackButton from '@/components/BackButton';
 import { 
   MapPin, 
   Calendar, 
@@ -219,7 +220,15 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   };
 
   // Gallery navigation
-  const images = pet?.images ?? [];
+  const rawImages = pet?.images ?? [];
+  const images = (Array.isArray(rawImages) ? rawImages : [])
+    .map((img: any) => {
+      if (typeof img === 'string') return { url: img, path: '' };
+      if (img && typeof img === 'object' && img.url) return { url: img.url, path: img.path || '' };
+      return null;
+    })
+    .filter(Boolean) as { path: string; url: string }[];
+
   const hasMultipleImages = images.length > 1;
 
   const prevImage = () => setActiveImageIndex((i) => (i === 0 ? images.length - 1 : i - 1));
@@ -257,7 +266,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
   const badgeLabel = pet.type === 'lost' ? '🚨 হারিয়ে গেছে' : pet.type === 'found' ? '🐾 পাওয়া গেছে' : '🏠 দত্তক';
 
   const cleanPhone = pet.contactPhone?.replace(/[^0-9+]/g, '');
-  const waUrl = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('0') ? '88' + cleanPhone : cleanPhone}?text=${encodeURIComponent(`সালাম, Pawtro-তে আপনার পোষ্য '${pet.petName || ''}' সম্পর্কিত পোস্টের ব্যাপারে জানতে চাইছি।`)}` : null;
+  const waUrl = getWhatsAppUrl(
+    pet.contactPhone,
+    `সালাম, Pawtro-তে আপনার পোষ্য '${pet.petName || ''}' সম্পর্কিত পোস্টের ব্যাপারে জানতে চাইছি।`
+  );
 
   const hasSocialLinks = ownerProfile?.socialLinks && (
     ownerProfile.socialLinks.facebook ||
@@ -270,7 +282,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
   // Current image
   const currentImageUrl = images[activeImageIndex]?.url 
-    || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop&q=80';
+    || (pet.species === 'cat'
+      ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&auto=format&fit=crop&q=80'
+      : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&auto=format&fit=crop&q=80');
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8">
@@ -284,13 +298,9 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
       )}
 
       {/* Back button */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-stone-600 hover:text-stone-900 mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>ফিডে ফিরে যান</span>
-      </Link>
+      <div className="mb-6">
+        <BackButton fallbackUrl="/" label="পেছনে ফিরে যান" />
+      </div>
 
       {/* Pending Approval Banner (only visible to owner if not yet approved) */}
       {isOwner && !pet.isApproved && pet.status !== 'resolved' && (
@@ -413,8 +423,8 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
                     onClick={() => setShowPosterModal(true)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200 transition-colors shadow-sm"
                   >
-                    <Printer className="w-4 h-4 text-amber-700" />
-                    <span>পোস্টার প্রিন্ট</span>
+                    <Download className="w-4 h-4 text-amber-700" />
+                    <span>পোস্টার ডাউনলোড / প্রিন্ট</span>
                   </button>
                   <button
                     onClick={sharePet}
@@ -648,10 +658,10 @@ export default function PetDetailPage({ params }: { params: Promise<{ id: string
 
             <button
               onClick={() => setShowPosterModal(true)}
-              className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 border border-amber-200 transition-colors"
+              className="w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 border border-amber-200 transition-colors shadow-xs"
             >
-              <Printer className="w-4 h-4 text-amber-700" />
-              <span>প্রিন্টএবল মিসিং পোস্টার দেখুন</span>
+              <Download className="w-4 h-4 text-amber-700" />
+              <span>মিসিং পোস্টার ডাউনলোড / প্রিন্ট</span>
             </button>
           </div>
 

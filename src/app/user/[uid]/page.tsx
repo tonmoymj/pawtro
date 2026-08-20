@@ -8,6 +8,8 @@ import { UserProfile, Pet } from '@/types';
 import RoleBadge from '@/components/RoleBadge';
 import Navbar from '@/components/Navbar';
 import PetCard from '@/components/PetCard';
+import BackButton from '@/components/BackButton';
+import { getWhatsAppUrl } from '@/lib/utils';
 import { 
   User, 
   MapPin, 
@@ -105,11 +107,14 @@ export default function PublicProfilePage({ params }: { params: Promise<{ uid: s
   }
 
   const cleanPhone = profile.phone?.replace(/[^0-9+]/g, '');
-  const cleanWa = profile.socialLinks?.whatsapp?.replace(/[^0-9]/g, '').replace(/^0/, '88');
+  const waUrl = getWhatsAppUrl(
+    profile.socialLinks?.whatsapp || profile.phone,
+    `সালাম, Pawtro-তে আপনার প্রোফাইল দেখে যোগাযোগ করছি।`
+  );
   const hasSocial = Boolean(
     profile.socialLinks?.facebook || 
     profile.socialLinks?.instagram || 
-    profile.socialLinks?.whatsapp || 
+    waUrl || 
     cleanPhone
   );
 
@@ -117,15 +122,11 @@ export default function PublicProfilePage({ params }: { params: Promise<{ uid: s
     <div className="min-h-screen bg-[#F7F8F7]">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Back Link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-stone-600 hover:text-stone-950 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>ফিডে ফিরে যান</span>
-        </Link>
+        <div className="mb-6">
+          <BackButton fallbackUrl="/" label="পেছনে ফিরে যান" />
+        </div>
 
         {/* Profile Header Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-stone-200 shadow-sm mb-8">
@@ -212,9 +213,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ uid: s
                 )}
 
                 {/* WhatsApp Button */}
-                {cleanWa && (
+                {waUrl && (
                   <a
-                    href={`https://wa.me/${cleanWa}`}
+                    href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs sm:text-sm shadow-sm transition-all"

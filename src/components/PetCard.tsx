@@ -17,7 +17,12 @@ export default function PetCard({ pet }: PetCardProps) {
     adoption: { label: 'দত্তকের জন্য', bg: 'bg-blue-600 text-white' },
   }[pet.type] || { label: 'সাধারণ', bg: 'bg-stone-500 text-white' };
 
-  const firstImage = pet.images?.[0]?.url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80';
+  const firstImage = (typeof pet.images?.[0] === 'string'
+    ? pet.images[0]
+    : pet.images?.[0]?.url)
+    || (pet.species === 'cat'
+      ? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80'
+      : 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80');
 
   return (
     <Link

@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase';
 import { uploadPetImage } from '@/lib/image-upload';
 import { getGeohash } from '@/lib/geo';
 import Navbar from '@/components/Navbar';
+import BackButton from '@/components/BackButton';
 import { 
   Upload, 
   Loader2, 
@@ -67,8 +68,18 @@ function PostPetForm() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files).slice(0, 3);
+      const isHeic = selectedFiles.some(f => f.name.toLowerCase().endsWith('.heic') || f.name.toLowerCase().endsWith('.heif'));
+      if (isHeic) {
+        setError('iPhone HEIC ছবির ক্ষেত্রে দয়া করে JPG বা PNG ফরম্যাটে কনভার্ট করে আপলোড করুন।');
+      } else {
+        setError('');
+      }
       setFiles(selectedFiles);
-      setPreviews(selectedFiles.map((file) => URL.createObjectURL(file)));
+      try {
+        setPreviews(selectedFiles.map((file) => URL.createObjectURL(file)));
+      } catch {
+        // Fallback
+      }
     }
   };
 
@@ -136,6 +147,22 @@ function PostPetForm() {
         });
       }
 
+      // Add user notification for pending approval
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+          type: 'approval_pending',
+          fromUserId: 'system',
+          fromUserName: 'Pawtro মডারেশন',
+          petId: docRef.id,
+          petName: petData.petName || (petData.species === 'cat' ? 'বিড়াল' : petData.species === 'dog' ? 'কুকুর' : 'পোষ্য'),
+          message: `আপনার "${petData.petName || 'নতুন পোষ্যের'}" পোস্টটি সফলভাবে জমা হয়েছে। অ্যাডমিন পর্যালোচনার পর এটি নিউজফিডে প্রকাশিত হবে (অনুমোদনের অপেক্ষায় ⏳)।`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      } catch (notifErr) {
+        console.warn('Notification creation notice:', notifErr);
+      }
+
       setSuccess(true);
       setSuccessPostId(docRef.id);
     } catch (err: any) {
@@ -161,13 +188,7 @@ function PostPetForm() {
       
       {/* Top Back & Cancel Bar */}
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-stone-700 hover:text-stone-950 bg-white border border-stone-200 px-4 py-2 rounded-xl shadow-xs hover:bg-stone-50 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4 text-amber-600" />
-          <span>হোমপেজে ফিরে যান</span>
-        </Link>
+        <BackButton fallbackUrl="/" label="পেছনে ফিরে যান" />
         <Link
           href="/"
           className="inline-flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-stone-800 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors"
@@ -203,15 +224,15 @@ function PostPetForm() {
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-5">
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
-            <h2 className="text-2xl font-black text-stone-900 mb-1">পোস্ট সফলভাবে প্রকাশিত!</h2>
+            <h2 className="text-2xl font-black text-stone-900 mb-1">পোস্ট সফলভাবে জমা হয়েছে!</h2>
             <p className="text-stone-500 text-sm mb-6">সম্প্রদায়কে সাহায্য করার জন্য ধন্যবাদ 🐾</p>
 
-            <div className="w-full max-w-md p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-left mb-6">
+            <div className="w-full max-w-md p-4 rounded-2xl bg-amber-50 border border-amber-300 flex items-start gap-3 text-left mb-6 shadow-xs">
               <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-amber-900 text-sm">পর্যালোচনায় আছে ⏳</h4>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  আপনার পোস্টটি অ্যাডমিন অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। সাধারণত কয়েক ঘণ্টার মধ্যে অনুমোদন হয়।
+                <h4 className="font-bold text-amber-900 text-sm">অ্যাডমিন অনুমোদনের অপেক্ষায় ⏳</h4>
+                <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                  আপনার পোস্টটি অ্যাডমিন অনুমোদনের পর সবার নিউজফিডে দেখা যাবে। আপনার ড্যাশবোর্ড নোটিফিকেশনেও আপডেট জানিয়ে দেওয়া হবে।
                 </p>
               </div>
             </div>

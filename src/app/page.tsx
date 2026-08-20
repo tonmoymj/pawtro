@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import PostPetModal from '@/components/PostPetModal';
-import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { deletePetImage } from '@/lib/image-upload';
+import { normalizeBanglaText } from '@/lib/utils';
 
 // Types
 export type PetType = 'lost' | 'found' | 'adopt';
@@ -42,7 +44,7 @@ export interface Interest {
 }
 
 export interface Pet {
-  id: number;
+  id: string | number;
   type: PetType;
   species: Species;
   breed: string;
@@ -72,11 +74,14 @@ export interface Pet {
     vaccinated?: string;
     notes?: string;
   } | null;
+  createdAt?: any;
+  userId?: string;
+  contactPhone?: string;
 }
 
 export interface Story {
   id: number;
-  petId?: number;
+  petId?: string | number;
   title: string;
   text: string;
   by: string;
@@ -168,15 +173,14 @@ const cos = (a: number[], b: number[]) => {
 };
 
 function queryTerms(q: string) {
-  const raw = q.trim().toLowerCase();
+  const raw = normalizeBanglaText(q);
   if (!raw) return [];
-  if (!/[a-z]/.test(raw)) return [raw];
-  const out: string[] = [];
+  const out: string[] = [raw];
   raw.split(/\s+/).forEach((w) => {
     out.push(w);
-    if (ROMAN[w]) out.push(ROMAN[w].toLowerCase());
+    if (ROMAN[w]) out.push(normalizeBanglaText(ROMAN[w]));
   });
-  return out;
+  return Array.from(new Set(out));
 }
 
 // Icons
@@ -244,7 +248,7 @@ export default function PawtroHome() {
   const [data, setData] = useState<Pet[]>(INITIAL_DATA);
   const [stories, setStories] = useState<Story[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
-  const [readNotifs, setReadNotifs] = useState<number[]>([]);
+  const [readNotifs, setReadNotifs] = useState<(string | number)[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [postModalType, setPostModalType] = useState<'lost' | 'found' | 'adoption'>('lost');
   const [initialLoad, setInitialLoad] = useState(true);
@@ -252,24 +256,31 @@ export default function PawtroHome() {
   // Real-time live Firestore data listener
   useEffect(() => {
     try {
-      const q = query(collection(db, 'pets'), orderBy('createdAt', 'desc'));
+      const q = query(
+        collection(db, 'pets'),
+        where('isApproved', '==', true)
+      );
       const unsub = onSnapshot(q, (snap) => {
         if (!snap.empty) {
-          const livePets: Pet[] = snap.docs.map((docSnap, index) => {
+          const livePets: Pet[] = snap.docs.map((docSnap) => {
             const d = docSnap.data();
+            const images = Array.isArray(d.images)
+              ? d.images.map((im: any) => (typeof im === 'string' ? im : im?.url)).filter(Boolean)
+              : [];
             return {
-              id: (index + 1) as any,
+              id: docSnap.id,
+              userId: d.userId,
               type: (d.type === 'adoption' ? 'adopt' : d.type) as PetType,
               species: (d.species || 'cat') as Species,
               breed: d.breed || 'দেশি',
               colors: Array.isArray(d.colors) && d.colors.length ? d.colors : ['মিশ্র'],
-              name: d.petName || (d.species === 'cat' ? 'বিড়াল' : 'কুকুর'),
-              photos: d.images?.length || 1,
-              images: d.images?.map((im: any) => im.url) || [],
+              name: d.petName || (d.species === 'cat' ? 'বিড়াল' : d.species === 'dog' ? 'কুকুর' : 'পোষ্য'),
+              photos: images.length || 1,
+              images: images,
               division: d.division || 'ঢাকা',
               area: d.area || '',
-              lat: d.lat || 23.8103,
-              lng: d.lng || 90.4125,
+              lat: typeof d.lat === 'number' ? d.lat : (DIVCENTER[d.division]?.lat || 23.8103),
+              lng: typeof d.lng === 'number' ? d.lng : (DIVCENTER[d.division]?.lng || 90.4125),
               date: d.eventDate || new Date().toISOString().split('T')[0],
               sex: d.sex === 'male' ? 'পুরুষ' : d.sex === 'female' ? 'মহিলা' : 'অজানা',
               age: d.age || '—',
@@ -277,8 +288,19 @@ export default function PawtroHome() {
               sig: [0.5, 0.5, 0.5],
               desc: d.description || '',
               resolved: d.status === 'resolved',
+              mine: user ? d.userId === user.uid : false,
+              contactPhone: d.contactPhone || '',
+              createdAt: d.createdAt,
             };
           });
+
+          // Sort newest first
+          livePets.sort((a: any, b: any) => {
+            const tA = a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : (a.date ? new Date(a.date).getTime() : 0)));
+            const tB = b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : (b.date ? new Date(b.date).getTime() : 0)));
+            return tB - tA;
+          });
+
           setData(livePets);
         } else {
           setData([]);
@@ -291,8 +313,9 @@ export default function PawtroHome() {
       return () => unsub();
     } catch (e) {
       console.warn('Live pets listener setup notice:', e);
+      setInitialLoad(false);
     }
-  }, []);
+  }, [user]);
 
   // UI state
   const [page, setPage] = useState<'board' | 'stories' | 'help'>('board');
@@ -302,14 +325,14 @@ export default function PawtroHome() {
   const [radius, setRadius] = useState<number>(25);
   const [q, setQ] = useState<string>('');
   const [mineOnly, setMineOnly] = useState<boolean>(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | number | null>(null);
 
   // Drawer / Sheet state
   const [drawerMode, setDrawerMode] = useState<'pet' | 'report' | 'interest' | 'story' | 'notifs' | 'form' | 'sighting' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Form states
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formStep, setFormStep] = useState<number>(1);
   const [formType, setFormType] = useState<PetType>('lost');
   const [formSpecies, setFormSpecies] = useState<Species>('dog');
@@ -329,7 +352,7 @@ export default function PawtroHome() {
   const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number }>(HOME);
 
   // Sighting form states
-  const [sightingPetId, setSightingPetId] = useState<number | null>(null);
+  const [sightingPetId, setSightingPetId] = useState<string | number | null>(null);
   const [sDate, setSDate] = useState<string>('2026-08-02');
   const [sArea, setSArea] = useState<string>('');
   const [sNote, setSNote] = useState<string>('');
@@ -419,26 +442,25 @@ export default function PawtroHome() {
 
   // Visible posts filtering
   const visiblePets = useMemo(() => {
-    const c = currentCenter;
     return data
       .filter((p) => {
         if (tab !== 'all' && p.type !== tab) return false;
         if (species !== 'all' && p.species !== species) return false;
-        if (division !== 'all') {
-          if (p.division !== division) return false;
-        } else if (km(c, p) > radius) return false;
+        if (division !== 'all' && p.division !== division) return false;
         if (mineOnly && !p.mine) return false;
         if (q) {
-          const hay = [p.name, p.breed, p.area, p.division, p.desc, p.marks, ...(p.colors || []), SPECIES_BN[p.species], TYPE_CONFIG[p.type]?.bn]
-            .join(' ')
-            .toLowerCase();
+          const hay = normalizeBanglaText([p.name, p.breed, p.area, p.division, p.desc, p.marks, ...(p.colors || []), SPECIES_BN[p.species], TYPE_CONFIG[p.type]?.bn].join(' '));
           const terms = queryTerms(q);
           if (!terms.some((t) => hay.includes(t))) return false;
         }
         return true;
       })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data, tab, species, division, radius, mineOnly, q, currentCenter]);
+      .sort((a, b) => {
+        const tA = (a as any).createdAt?.toMillis?.() || ((a as any).createdAt?.seconds ? (a as any).createdAt.seconds * 1000 : (a.date ? new Date(a.date).getTime() : 0));
+        const tB = (b as any).createdAt?.toMillis?.() || ((b as any).createdAt?.seconds ? (b as any).createdAt.seconds * 1000 : (b.date ? new Date(b.date).getTime() : 0));
+        return tB - tA;
+      });
+  }, [data, tab, species, division, mineOnly, q]);
 
   // Notifications calculation
   const notifications = useMemo(() => {
@@ -462,7 +484,6 @@ export default function PawtroHome() {
       const raw = localStorage.getItem('pawtro:state');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed.data && parsed.data.length) setData(parsed.data);
         if (parsed.stories) setStories(parsed.stories);
         if (parsed.subs) setSubs(parsed.subs);
         if (parsed.read) setReadNotifs(parsed.read);
@@ -473,9 +494,9 @@ export default function PawtroHome() {
   // Persist state
   useEffect(() => {
     try {
-      localStorage.setItem('pawtro:state', JSON.stringify({ data, stories, subs, read: readNotifs, v: 1 }));
+      localStorage.setItem('pawtro:state', JSON.stringify({ stories, subs, read: readNotifs, v: 1 }));
     } catch {}
-  }, [data, stories, subs, readNotifs]);
+  }, [stories, subs, readNotifs]);
 
   // Main Map Init and Marker Rendering
   useEffect(() => {
@@ -563,7 +584,7 @@ export default function PawtroHome() {
   }, [visiblePets, selectedId, data, currentCenter, division, radius]);
 
   // Handle opening a pet
-  const openPet = (id: number) => {
+  const openPet = (id: string | number) => {
     setSelectedId(id);
     setDrawerMode('pet');
     const p = data.find((x) => x.id === id);
@@ -578,7 +599,7 @@ export default function PawtroHome() {
   };
 
   // Open New/Edit Post Wizard
-  const openFormModal = (preset?: PetType, editId?: number) => {
+  const openFormModal = (preset?: PetType, editId?: string | number) => {
     setEditingId(editId || null);
     setFormStep(1);
     const existing = editId ? data.find((x) => x.id === editId) : null;
@@ -751,7 +772,7 @@ export default function PawtroHome() {
 
     const newPet: Pet = {
       ...(fields as any),
-      id: Math.max(0, ...data.map((x) => x.id)) + 1,
+      id: Math.random().toString(36).substring(2, 9),
       mine: true,
       _new: Date.now(),
       sightings: [],
@@ -775,17 +796,18 @@ export default function PawtroHome() {
   };
 
   // Add Comment
-  const handleAddComment = (petId: number) => {
+  const handleAddComment = async (petId: string | number) => {
     if (!commentText.trim()) {
       showToast('কিছু লিখুন');
       return;
     }
-    const author = commentName.trim() || 'নাম দেননি';
+    const author = commentName.trim() || profile?.displayName || 'নাম দেননি';
+    const text = commentText.trim();
     setData((prev) =>
       prev.map((p) => {
         if (p.id === petId) {
           const comments = p.comments || [];
-          return { ...p, comments: [...comments, { author, text: commentText.trim(), at: 'এইমাত্র' }] };
+          return { ...p, comments: [...comments, { author, text, at: 'এইমাত্র' }] };
         }
         return p;
       })
@@ -793,11 +815,45 @@ export default function PawtroHome() {
     setCommentText('');
     setCommentName('');
     showToast('আপডেট যোগ হয়েছে');
+
+    // Firestore persistence
+    try {
+      const pet = data.find((x) => x.id === petId);
+      await addDoc(collection(db, 'pets', String(petId), 'comments'), {
+        userId: user?.uid || 'guest',
+        authorName: author,
+        text,
+        createdAt: serverTimestamp(),
+      });
+
+      if (pet?.userId && user && pet.userId !== user.uid) {
+        await addDoc(collection(db, 'users', pet.userId, 'notifications'), {
+          type: 'comment',
+          fromUserId: user.uid,
+          fromUserName: author,
+          petId: String(petId),
+          petName: pet.name || 'পোষ্য',
+          message: `${author} আপনার পোষ্যের পোস্টে একটি মন্তব্য করেছেন: "${text.slice(0, 50)}..."`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn('Comment persist notice:', err);
+    }
   };
 
   // Mark Post Resolved
-  const handleResolve = (petId: number) => {
+  const handleResolve = async (petId: string | number) => {
     setData((prev) => prev.map((p) => (p.id === petId ? { ...p, resolved: true } : p)));
+    try {
+      await updateDoc(doc(db, 'pets', String(petId)), {
+        status: 'resolved',
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Resolve persist notice:', err);
+    }
     const p = data.find((x) => x.id === petId);
     if (p) {
       setStTitle(p.name ? `${p.name} ফিরে এসেছে` : 'ফিরে পেলাম');
@@ -808,7 +864,7 @@ export default function PawtroHome() {
   };
 
   // Save Success Story
-  const handleSaveStory = () => {
+  const handleSaveStory = async () => {
     if (!stText.trim()) {
       showToast('একটু লিখুন');
       return;
@@ -819,57 +875,85 @@ export default function PawtroHome() {
       petId: selectedId || undefined,
       title: stTitle || 'ফিরে পেলাম',
       text: stText.trim(),
-      by: stBy.trim() || 'নাম দেননি',
+      by: stBy.trim() || profile?.displayName || 'নাম দেননি',
       at: 'আজ',
       species: p ? p.species : 'dog',
-      image: p?.images && p.images[0] ? p.images[0] : null,
-      area: p ? p.area : 'রাজশাহী',
+      image: p?.images && p.images[0] ? (typeof p.images[0] === 'string' ? p.images[0] : (p.images[0] as any)?.url) : null,
+      area: p ? p.area : 'ঢাকা',
     };
     setStories((prev) => [newStory, ...prev]);
     closeDrawer();
     setPage('stories');
     showToast('গল্প প্রকাশিত — সাফল্যের গল্প ট্যাবে দেখুন');
+
+    try {
+      await addDoc(collection(db, 'stories'), {
+        ...newStory,
+        userId: user?.uid || 'guest',
+        createdAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Story persist notice:', err);
+    }
   };
 
   // Save Sighting
-  const handleSaveSighting = () => {
+  const handleSaveSighting = async () => {
     if (!sightingPetId) return;
+    const pet = data.find((x) => x.id === sightingPetId);
+    const sightingData = {
+      lat: sPicked.lat,
+      lng: sPicked.lng,
+      date: sDate,
+      area: sArea.trim() || 'ম্যাপে চিহ্নিত জায়গা',
+      note: sNote.trim() || 'বিবরণ দেওয়া হয়নি',
+    };
+
     setData((prev) =>
       prev.map((p) => {
         if (p.id === sightingPetId) {
           const sightings = p.sightings || [];
-          return {
-            ...p,
-            sightings: [
-              ...sightings,
-              {
-                lat: sPicked.lat,
-                lng: sPicked.lng,
-                date: sDate,
-                area: sArea.trim() || 'ম্যাপে চিহ্নিত জায়গা',
-                note: sNote.trim() || 'বিবরণ দেওয়া হয়নি',
-              },
-            ],
-          };
+          return { ...p, sightings: [...sightings, sightingData] };
         }
         return p;
       })
     );
     setDrawerMode('pet');
     showToast('ধন্যবাদ — পোস্টদাতাকে জানানো হয়েছে');
+
+    try {
+      await addDoc(collection(db, 'pets', String(sightingPetId), 'sightings'), {
+        ...sightingData,
+        userId: user?.uid || 'guest',
+        createdAt: serverTimestamp(),
+      });
+
+      if (pet?.userId && user && pet.userId !== user.uid) {
+        await addDoc(collection(db, 'users', pet.userId, 'notifications'), {
+          type: 'sighting',
+          fromUserId: user.uid,
+          fromUserName: profile?.displayName || 'সদস্য',
+          petId: String(sightingPetId),
+          petName: pet.name || 'পোষ্য',
+          message: `আপনার পোষ্যের একটি নতুন সাইটিং রিপোর্ট জমা হয়েছে (${sightingData.area})।`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn('Sighting persist notice:', err);
+    }
   };
 
   // Save Report
-  const handleSaveReport = () => {
+  const handleSaveReport = async () => {
     if (!selectedId) return;
+    const reportData = { reason: rReason, detail: rDetail.trim(), at: Date.now() };
     setData((prev) =>
       prev.map((p) => {
         if (p.id === selectedId) {
           const reports = p.reports || [];
-          return {
-            ...p,
-            reports: [...reports, { reason: rReason, detail: rDetail.trim(), at: Date.now() }],
-          };
+          return { ...p, reports: [...reports, reportData] };
         }
         return p;
       })
@@ -877,33 +961,39 @@ export default function PawtroHome() {
     setRDetail('');
     setDrawerMode('pet');
     showToast('রিপোর্ট পাঠানো হয়েছে — ধন্যবাদ');
+
+    try {
+      await addDoc(collection(db, 'pets', String(selectedId), 'reports'), {
+        ...reportData,
+        userId: user?.uid || 'guest',
+        createdAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Report persist notice:', err);
+    }
   };
 
   // Save Adoption Application
-  const handleSaveInterest = () => {
+  const handleSaveInterest = async () => {
     if (!iName.trim() || !iPhone.trim()) {
       showToast('নাম ও ফোন নম্বর দিন');
       return;
     }
     if (!selectedId) return;
+    const pet = data.find((x) => x.id === selectedId);
+    const interestData = {
+      name: iName.trim(),
+      phone: iPhone.trim(),
+      home: iHome,
+      exp: iExp,
+      msg: iMsg.trim(),
+      at: 'এইমাত্র',
+    };
     setData((prev) =>
       prev.map((p) => {
         if (p.id === selectedId) {
           const interests = p.interests || [];
-          return {
-            ...p,
-            interests: [
-              ...interests,
-              {
-                name: iName.trim(),
-                phone: iPhone.trim(),
-                home: iHome,
-                exp: iExp,
-                msg: iMsg.trim(),
-                at: 'এইমাত্র',
-              },
-            ],
-          };
+          return { ...p, interests: [...interests, interestData] };
         }
         return p;
       })
@@ -913,14 +1003,53 @@ export default function PawtroHome() {
     setIMsg('');
     setDrawerMode('pet');
     showToast('আবেদন পাঠানো হয়েছে — পোস্টদাতা যোগাযোগ করবেন');
+
+    try {
+      await addDoc(collection(db, 'pets', String(selectedId), 'interests'), {
+        ...interestData,
+        userId: user?.uid || 'guest',
+        petOwnerId: pet?.userId || '',
+        createdAt: serverTimestamp(),
+      });
+
+      if (pet?.userId && user && pet.userId !== user.uid) {
+        await addDoc(collection(db, 'users', pet.userId, 'notifications'), {
+          type: 'adoption_interest',
+          fromUserId: user.uid,
+          fromUserName: iName.trim(),
+          petId: String(selectedId),
+          petName: pet.name || 'পোষ্য',
+          message: `${iName.trim()} আপনার পোষ্যটি দত্তক নেওয়ার আগ্রহ প্রকাশ করেছেন।`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn('Interest persist notice:', err);
+    }
   };
 
-  // Delete Post
-  const handleDeletePost = (id: number) => {
+  // Delete Post with Storage Image Cleanup
+  const handleDeletePost = async (id: string | number) => {
     if (!confirm('পোস্টটি স্থায়ীভাবে মুছে ফেলবেন?')) return;
+    const petToDelete = data.find((p) => p.id === id);
     setData((prev) => prev.filter((p) => p.id !== id));
     closeDrawer();
     showToast('পোস্ট মুছে ফেলা হয়েছে');
+
+    try {
+      await deleteDoc(doc(db, 'pets', String(id)));
+      // Delete images from Storage if path exists
+      if (petToDelete?.images) {
+        for (const img of petToDelete.images) {
+          if (typeof img === 'object' && (img as any)?.path) {
+            await deletePetImage((img as any).path);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Delete persist notice:', err);
+    }
   };
 
   // Subscribe to filter
@@ -931,13 +1060,15 @@ export default function PawtroHome() {
 
   // WhatsApp Share
   const handleWaShare = (p: Pet) => {
-    const txt = `${TYPE_CONFIG[p.type]?.bn}: ${p.name ? p.name + ' — ' : ''}${p.breed} ${SPECIES_BN[p.species]}, ${p.colors.join('/')}।\n${p.area}, ${agoText(p.date)}।\n${p.marks}\nPawtro: pawtro.com/p/${p.id}`;
+    const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/pet/${p.id}` : `/pet/${p.id}`;
+    const txt = `${TYPE_CONFIG[p.type]?.bn}: ${p.name ? p.name + ' — ' : ''}${p.breed} ${SPECIES_BN[p.species]}, ${p.colors.join('/')}।\n${p.area}, ${agoText(p.date)}।\n${p.marks}\nPawtro: ${postUrl}`;
     window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
   };
 
   // Text Share
   const handleTextShare = (p: Pet) => {
-    const txt = `${TYPE_CONFIG[p.type]?.bn}: ${p.name ? p.name + ' — ' : ''}${p.breed} ${SPECIES_BN[p.species]}, ${p.colors.join('/')}। ${p.area}, ${agoText(p.date)}। Pawtro: pawtro.com/p/${p.id}`;
+    const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/pet/${p.id}` : `/pet/${p.id}`;
+    const txt = `${TYPE_CONFIG[p.type]?.bn}: ${p.name ? p.name + ' — ' : ''}${p.breed} ${SPECIES_BN[p.species]}, ${p.colors.join('/')}। ${p.area}, ${agoText(p.date)}। Pawtro: ${postUrl}`;
     if (navigator.share) {
       navigator.share({ title: 'Pawtro', text: txt }).catch(() => {});
     } else if (navigator.clipboard) {
@@ -1068,9 +1199,8 @@ export default function PawtroHome() {
 
   // Counts
   const nearCount = useMemo(() => {
-    const c = currentCenter;
-    return data.filter((p) => (division === 'all' ? km(c, p) <= radius : p.division === division));
-  }, [data, currentCenter, division, radius]);
+    return data.filter((p) => (division === 'all' ? true : p.division === division));
+  }, [data, division]);
 
   return (
     <div>

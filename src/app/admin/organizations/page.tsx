@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck, ShieldX, ShieldAlert, Loader2, Search, Plus, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 
 interface Org {
   id?: string;
@@ -107,14 +108,17 @@ export default function AdminOrganizationsPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#111614]">রেসকিউ টিম ও ক্লিনিক</h1>
-          <p className="text-[#8A948F] text-sm mt-0.5">মোট {orgs.length}টি অর্গানাইজেশন</p>
+          <div className="mb-2">
+            <BackButton fallbackUrl="/admin" label="অ্যাডমিন কমান্ড সেন্টারে ফিরুন" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#111614]">রেসকিউ টিম ও ক্লিনিক</h1>
+          <p className="text-[#8A948F] text-xs sm:text-sm mt-0.5">মোট {orgs.length}টি অর্গানাইজেশন</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="inline-flex items-center gap-2 bg-[#1D6B5F] hover:bg-[#15544a] text-white px-4 py-2 rounded-[6px] text-[13px] font-semibold transition-colors"
+          className="inline-flex items-center gap-2 bg-[#1D6B5F] hover:bg-[#15544a] text-white px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors shadow-xs"
         >
           <Plus className="w-4 h-4" /> নতুন যোগ করুন
         </button>

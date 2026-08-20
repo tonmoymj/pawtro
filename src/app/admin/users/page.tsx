@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 
 const ROLES = ['user', 'volunteer', 'admin', 'superadmin'];
 
@@ -153,8 +154,11 @@ export default function AdminUsersPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-[#111614]">ইউজার ম্যানেজমেন্ট ও রোল কন্ট্রোল</h1>
-        <p className="text-[#8A948F] text-sm mt-0.5">মোট {users.length} জন নিবন্ধিত সদস্য</p>
+        <div className="mb-2">
+          <BackButton fallbackUrl="/admin" label="অ্যাডমিন কমান্ড সেন্টারে ফিরুন" />
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#111614]">ইউজার ম্যানেজমেন্ট ও রোল কন্ট্রোল</h1>
+        <p className="text-[#8A948F] text-xs sm:text-sm mt-0.5">মোট {users.length} জন নিবন্ধিত সদস্য</p>
       </div>
 
       {/* Stats Summary Cards */}

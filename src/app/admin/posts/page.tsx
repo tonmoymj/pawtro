@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, doc, deleteDoc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Pet } from '@/types';
@@ -18,6 +18,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
+import { deletePetImage } from '@/lib/image-upload';
 
 export default function AdminPostsPage() {
   const { user, profile, loading } = useAuth();
@@ -78,11 +80,34 @@ export default function AdminPostsPage() {
   const handleApprove = async (petId: string) => {
     setActionLoading(petId + '-approve');
     try {
+      const targetPet = pets.find((p) => p.id === petId);
       await updateDoc(doc(db, 'pets', petId), { isApproved: true, updatedAt: serverTimestamp() });
-      setPets(prev => prev.map(p => p.id === petId ? { ...p, isApproved: true } : p));
-      showToast('পোস্টটি অনুমোদন করা হয়েছে।');
-    } catch { showToast('সমস্যা হয়েছে।'); }
-    finally { setActionLoading(null); }
+      setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, isApproved: true } : p)));
+
+      // Send notification to pet owner
+      if (targetPet?.userId) {
+        try {
+          await addDoc(collection(db, 'users', targetPet.userId, 'notifications'), {
+            type: 'approval_success',
+            fromUserId: user?.uid || 'admin',
+            fromUserName: 'Pawtro মডারেশন টিম',
+            petId,
+            petName: targetPet.petName || (targetPet.species === 'cat' ? 'বিড়াল' : 'কুকুর'),
+            message: `🎉 অভিনন্দন! আপনার "${targetPet.petName || 'পোষ্যের'}" পোস্টটি অ্যাডমিন কর্তৃক অনুমোদিত হয়েছে এবং এখন লাইভ ফিডে দেখা যাচ্ছে।`,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
+        } catch (notifErr) {
+          console.warn('Approval notification creation notice:', notifErr);
+        }
+      }
+
+      showToast('পোস্টটি অনুমোদন করা হয়েছে এবং ব্যবহারকারীকে নোটিফিকেশন পাঠানো হয়েছে।');
+    } catch {
+      showToast('সমস্যা হয়েছে।');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleResolve = async (petId: string) => {
@@ -97,10 +122,18 @@ export default function AdminPostsPage() {
 
   const handleDelete = async (petId: string) => {
     if (!confirm('আপনি কি নিশ্চিত? এই পোস্টটি স্থায়ীভাবে ডিলিট করা হবে।')) return;
+    const targetPet = pets.find((p) => p.id === petId);
     setActionLoading(petId + '-delete');
     try {
       await deleteDoc(doc(db, 'pets', petId));
       setPets(prev => prev.filter(p => p.id !== petId));
+      if (targetPet?.images) {
+        for (const img of targetPet.images) {
+          if (typeof img === 'object' && (img as any)?.path) {
+            await deletePetImage((img as any).path);
+          }
+        }
+      }
       showToast('পোস্টটি ডিলিট করা হয়েছে।');
     } catch { showToast('সমস্যা হয়েছে।'); }
     finally { setActionLoading(null); }
@@ -134,8 +167,11 @@ export default function AdminPostsPage() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-[#111614]">পোস্ট মডারেশন</h1>
-        <p className="text-[#8A948F] text-sm mt-0.5">মোট {pets.length}টি পোস্ট</p>
+        <div className="mb-2">
+          <BackButton fallbackUrl="/admin" label="অ্যাডমিন কমান্ড সেন্টারে ফিরুন" />
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-[#111614]">পোস্ট মডারেশন</h1>
+        <p className="text-[#8A948F] text-xs sm:text-sm mt-0.5">মোট {pets.length}টি পোস্ট</p>
       </div>
 
       {/* Filters */}
@@ -194,8 +230,8 @@ export default function AdminPostsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-[5px] bg-[#F1F3F1] overflow-hidden flex-shrink-0">
-                          {pet.images?.[0]?.url && (
-                            <img src={pet.images[0].url} alt="" className="w-full h-full object-cover" />
+                          {(typeof pet.images?.[0] === 'string' ? pet.images[0] : pet.images?.[0]?.url) && (
+                            <img src={typeof pet.images?.[0] === 'string' ? pet.images[0] : pet.images?.[0]?.url} alt="" className="w-full h-full object-cover" />
                           )}
                         </div>
                         <div>
