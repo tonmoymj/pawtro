@@ -43,12 +43,29 @@ export async function verifyRecaptcha(action: string): Promise<boolean> {
       });
     });
 
-    // Minimal score check — ideally verify via server API route
-    // For now we just check the token was generated successfully
-    return !!token;
+    if (!token) {
+      return false;
+    }
+
+    // Server-side verification via /api/verify-recaptcha
+    const response = await fetch('/api/verify-recaptcha', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, action }),
+    });
+
+    if (!response.ok) {
+      console.warn('reCAPTCHA backend returned non-200 status:', response.status);
+      return true; // Fail open to not block legitimate users on minor API hiccups
+    }
+
+    const data = await response.json();
+    return data.success === true;
   } catch (err) {
     console.error('reCAPTCHA verification error:', err);
-    // Fail open (allow) so legitimate users aren't blocked
+    // Fail open (allow) so legitimate users aren't blocked on network error
     return true;
   }
 }
